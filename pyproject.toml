@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "openowl"
+version = "0.1.0"
+description = "OSS monitoring and security"
+authors = ["defjm <git.mojan@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+requests = "^2.32.3"
+
+[tool.poetry.group.dev.dependencies]
+jupyter = "^1.0.0"
+black = "^24.8.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
