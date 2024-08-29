@@ -1,5 +1,9 @@
 from urllib.parse import quote
 
+from openowl.logger_config import setup_logger
+
+logger = setup_logger(__name__)
+
 
 def get_packages(client, system_name, package_name):
     return client.get(f"/v3/systems/{system_name}/packages/{package_name}")
@@ -13,9 +17,9 @@ def get_default_version(raw_response):
             for version in raw_response.json()["versions"]
             if version["isDefault"]
         )
-        print(f"The default version is: {default_version}")
+        logger.info(f"The default version is: {default_version}")
     except StopIteration:
-        print("No default version found.")
+        logger.warning("No default version found.")
     return default_version
 
 

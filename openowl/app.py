@@ -1,14 +1,9 @@
 import re
 from pprint import pprint
 
-from openowl.logger_config import setup_logger
+import pandas as pd
 
-from openowl.deps_local import (
-    check_files,
-    clean_dependencies,
-    find_project_root,
-    parse_pyproject_toml,
-)
+from openowl.deps_local import check_files, clean_dependencies, parse_pyproject_toml
 from openowl.depsdev_client import DepsDevClient
 from openowl.depsdev_utils import (
     get_default_version,
@@ -16,6 +11,7 @@ from openowl.depsdev_utils import (
     get_packages,
     get_version,
 )
+from openowl.logger_config import setup_logger
 
 logger = setup_logger(__name__)
 
@@ -30,7 +26,6 @@ def extract_github_library_name(repo_url):
     Returns:
     str: The extracted library name, or None if the URL is not valid.
     """
-    logger.info(f"Attempting to extract library name from URL: {repo_url}")
     pattern = r"https?://github\.com/[\w-]+/([\w-]+)"
     match = re.search(pattern, repo_url)
     if match:
@@ -52,7 +47,6 @@ def is_github_repo(url):
     Returns:
     bool: True if it's a valid GitHub repo URL, False otherwise.
     """
-    logger.info(f"Checking if URL is a valid GitHub repo: {url}")
     pattern = r"^https?://github\.com/[\w-]+/[\w-]+/?$"
     is_valid = bool(re.match(pattern, url))
     return is_valid
@@ -66,6 +60,12 @@ def scan_local(local_root_dir=None):
     dependencies = dependencies["dependencies"]
     dependencies = clean_dependencies(dependencies)
     return dependencies
+
+
+def get_deps_table(deps_json):
+    df = pd.DataFrame([dep["versionKey"] for dep in deps_json["nodes"]])
+    df["relation"] = pd.DataFrame([dep["relation"] for dep in deps_json["nodes"]])
+    return df
 
 
 def scan_from_url(repo_url=None, package_version=None):
@@ -85,9 +85,17 @@ def scan_from_url(repo_url=None, package_version=None):
         package_dependencies = get_dependencies(
             depsdev_client, system_name, package_name, default_version
         )
+        df = get_deps_table(package_dependencies.json())
+        return df
 
 
 if __name__ == "__main__":
     repo_url = "https://github.com/pandas-dev/pandas"
-    scan_from_url(repo_url)
-
+    df = scan_from_url(repo_url)
+    print(
+        """
+############## Dependencies ################
+          
+        """
+    )
+    print(df[1:])
