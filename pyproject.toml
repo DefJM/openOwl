@@ -9,6 +9,10 @@ readme = "README.md"
 python = "^3.12"
 requests = "^2.32.3"
 pandas = "^2.2.2"
+fastapi = "^0.112.2"
+pydantic = "^2.8.2"
+uvicorn = "^0.30.6"
+streamlit = "^1.38.0"
 
 [tool.poetry.group.dev.dependencies]
 jupyter = "^1.0.0"

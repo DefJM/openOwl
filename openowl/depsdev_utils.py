@@ -1,5 +1,7 @@
 from urllib.parse import quote
 
+import pandas as pd
+
 from openowl.logger_config import setup_logger
 
 logger = setup_logger(__name__)
@@ -40,3 +42,9 @@ def get_advisory(client, advisory_key_id):
 
 def url_encode(string):
     return quote(string, safe="")
+
+
+def get_deps_table(deps_json):
+    df = pd.DataFrame([dep["versionKey"] for dep in deps_json["nodes"]])
+    df["relation"] = pd.DataFrame([dep["relation"] for dep in deps_json["nodes"]])
+    return df
