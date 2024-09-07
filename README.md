@@ -2,10 +2,14 @@
 
 ## Summary
 OpenOwl provides analysis and monitoring for dependencies and related security-relevant information. 
-- [ ] List dependencies from local Python projects, or open-souerce GitHub repositories
-- [ ] Check dependencies for existing security advisories, using (which uses https://osv.dev)
 
 ![Screenshot web app](assets/streamlit-screenshot.png)
+
+## Work in Progress
+- [x] List dependencies from open-souerce GitHub repositories
+- [ ] List dependencies from local Python project
+- [ ] Check dependencies for existing security advisories, using (which uses https://osv.dev)
+- [ ] summarize current issues
 
 
 ## Getting started
