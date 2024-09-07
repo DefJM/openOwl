@@ -18,8 +18,10 @@
 
 ### WP3: Further features for dependency overview
 - [ ] Dependencies graph
-- [ ] Parse and show advisories (i.e. known vulnerabilities) of dependencies
-- [ ] [OpenSSF ScoreCard](https://github.com/ossf/scorecard) check
+  - [ ] Model criticality of dependencies for specific set of applications
+  - [ ] Also take into account committer information, see [blog post](https://blog.deps.dev/combining-dependencies-with-commits/), and [Python implementation](https://blog.deps.dev/assets/2023-11-29-combining-dependencies-with-commits/pagerank_deps.py)
+- [ ] Parse and show Security Advisories (i.e. known vulnerabilities of dependencies) 
+- [ ] Check security metrics using [OpenSSF ScoreCard](https://github.com/ossf/scorecard)
 
 
 
