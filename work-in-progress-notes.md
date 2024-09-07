@@ -9,16 +9,18 @@
 - [ ] Minimal backend/frontend with FastAPI and Streamlit
 - [ ] Deployed as docker / pypi package
 
-### WP2: Further features for dependency overview
-- [ ] Dependencies graph
-- [ ] Parse and show advisories (i.e. known vulnerabilities) of dependencies
-
-### Further ideas
+### WP2: Issues overview, analysis, categorization 
 - [ ] Issues: List number and statistics on issues (for open source libraries, which are on Github)
 - [ ] Issues: Further synthesis for issues, i.e. summary, suggested topic category, etc
 - [ ] Actors: List actors (contributors, commenters on issues, pull-requests) and related statistics
 - [ ] Actors: Analyze tone of comments ("friendlyness" / "harshness" / ...), score helpfullness/involvement, flag "suspicious behaviour"
 - [ ] Pictogram chart for issues over time, color coded by category
+
+### WP3: Further features for dependency overview
+- [ ] Dependencies graph
+- [ ] Parse and show advisories (i.e. known vulnerabilities) of dependencies
+- [ ] [OpenSSF ScoreCard](https://github.com/ossf/scorecard) check
+
 
 
 ## Notes
