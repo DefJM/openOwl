@@ -4,11 +4,12 @@ from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
-from openowl.deps_local import check_files, clean_dependencies, parse_pyproject_toml
 from openowl.clients import DepsDevClient
+from openowl.deps_local import check_files, clean_dependencies, parse_pyproject_toml
 from openowl.depsdev_utils import (
     get_default_version,
     get_dependencies,
+    get_deps_stats,
     get_packages,
     get_version,
 )
@@ -45,7 +46,7 @@ def scan_from_url(input: InputRepoFromUrl):
         package_name = extract_github_library_name(repo_url)
     else:
         logger.warning(f"URL is not a valid GitHub repo: {repo_url}")
-    
+
     system_name = "pypi"
     depsdev_client = DepsDevClient()
     package_data = get_packages(depsdev_client, system_name, package_name)
@@ -57,12 +58,17 @@ def scan_from_url(input: InputRepoFromUrl):
     package_dependencies = get_dependencies(
         depsdev_client, system_name, package_name, package_version
     )
-
+    num_deps_total, num_deps_direct, num_deps_indirect = get_deps_stats(
+        package_dependencies.json()
+    )
     return JSONResponse(
         content={
             "package_name": package_name,
             "package_version": package_version,
             "package_version_data": package_version_data.json(),
             "package_dependencies": package_dependencies.json(),
+            "num_deps_total": num_deps_total,
+            "num_deps_direct": num_deps_direct,
+            "num_deps_indirect": num_deps_indirect,
         }
     )

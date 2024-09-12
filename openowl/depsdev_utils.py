@@ -1,5 +1,4 @@
 from urllib.parse import quote
-
 import pandas as pd
 
 from openowl.logger_config import setup_logger
@@ -47,4 +46,12 @@ def url_encode(string):
 def get_deps_table(deps_json):
     df = pd.DataFrame([dep["versionKey"] for dep in deps_json["nodes"]])
     df["relation"] = pd.DataFrame([dep["relation"] for dep in deps_json["nodes"]])
+    df = df.sort_values(by="relation")
     return df
+
+def get_deps_stats(package_dependencies):
+    df_deps = get_deps_table(package_dependencies)
+    num_deps_total = len(df_deps.loc[df_deps["relation"].isin(["DIRECT", "INDIRECT"])])
+    num_deps_direct = len(df_deps.loc[df_deps["relation"] == "DIRECT"])
+    num_deps_indirect = len(df_deps.loc[df_deps["relation"] == "INDIRECT"])
+    return num_deps_total, num_deps_direct, num_deps_indirect 
