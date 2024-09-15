@@ -9,16 +9,19 @@
 - [x] Minimal backend/frontend with FastAPI and Streamlit
 - [ ] Basic statistics on issues
   - [ ] `num_issues`,`num_open_bug_issues`
-- [ ] More advanced statistics on issues
-  - [ ] `num_suspicious_issue_discussions`, `num_toxic_issues`, `num_issues_disagreement_on_if_is_bug` 
 - [ ] Deploy as package or container
 
 
 ### WP2: Issues overview, analysis, categorization 
+- [ ] More advanced statistics on issues (kpis and trends):
+  - [ ] `num_suspicious_issue_discussions`, `num_toxic_issues`, `num_issues_disagreement_on_if_is_bug` 
+- [ ] Further repo kpis and trends (need to check if this is not already provided somewhere)
+  - [ ] `release_frequency`, `time_to_resolve_critical_bugs`,`maintainer_activity`, 
 - [ ] Issues: Further synthesis for issues, i.e. summary, suggested topic category, etc
 - [ ] Actors: List actors (contributors, commenters on issues, pull-requests) and related statistics
 - [ ] Actors: Analyze tone of comments ("friendlyness" / "harshness" / ...), score helpfullness/involvement, flag "suspicious behaviour"
 - [ ] Pictogram chart for issues over time, color coded by category
+
 
 ### WP3: Further features for dependency overview
 - [ ] Dependencies graph
@@ -30,6 +33,9 @@
 
 
 ## Notes
+
+### Idea: provide trends
+- Provide trends a la [apple health trends](https://support.apple.com/en-us/105003)
 
 ### Notes on serving
 Serving will depend on what problem we solve. Need to dig deeper.
