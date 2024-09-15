@@ -5,12 +5,16 @@
 ## Work packages
 
 ### WP1: Minimal end2end
-- [ ] Return list of dependencies with their levels for specific project, using `requirements.txt` and/or `pyproject.toml`, or, alternatively, by entering the github handle (and thus reviewing another open source project)
-- [ ] Minimal backend/frontend with FastAPI and Streamlit
-- [ ] Deployed as docker / pypi package
+- [x] Return list of dependencies with their levels for specific project, using `requirements.txt` and/or `pyproject.toml`, or, alternatively, by entering the github handle (and thus reviewing another open source project)
+- [x] Minimal backend/frontend with FastAPI and Streamlit
+- [ ] Basic statistics on issues
+  - [ ] `num_issues`,`num_open_bug_issues`
+- [ ] More advanced statistics on issues
+  - [ ] `num_suspicious_issue_discussions`, `num_toxic_issues`, `num_issues_disagreement_on_if_is_bug` 
+- [ ] Deploy as package or container
+
 
 ### WP2: Issues overview, analysis, categorization 
-- [ ] Issues: List number and statistics on issues (for open source libraries, which are on Github)
 - [ ] Issues: Further synthesis for issues, i.e. summary, suggested topic category, etc
 - [ ] Actors: List actors (contributors, commenters on issues, pull-requests) and related statistics
 - [ ] Actors: Analyze tone of comments ("friendlyness" / "harshness" / ...), score helpfullness/involvement, flag "suspicious behaviour"
