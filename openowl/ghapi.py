@@ -44,14 +44,27 @@ def get_issue_details(owner, repo, issue_number, token=None):
 
 
 
+def get_pull_requests(owner, repo, token, state="open"):
+    url = f"https://api.github.com/repos/{owner}/{repo}/pulls"
+    headers = {
+        "Authorization": f"token {token}",
+        "Accept": "application/vnd.github.v3+json"
+    }
+    params = {"state": "open"}
+    
+    all_prs = []
+    page = 1
+    
+    while True:
+        response = requests.get(url, headers=headers, params={**params, "page": page})
+        response.raise_for_status()
+        
+        prs = response.json()
+        if not prs:
+            break
+        
+        all_prs.extend(prs)
+        page += 1
+    
+    return all_prs
 
-
-# # Usage example
-# owner = "explodinggradients"
-# repo = "ragas"
-# token = "your_personal_access_token"
-
-# all_issues = list_github_issues(owner, repo, token)
-
-# for issue in all_issues:
-#     print(f"#{issue['number']} - {issue['title']}")
