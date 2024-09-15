@@ -7,14 +7,22 @@
 ### WP1: Minimal end2end
 - [x] Return list of dependencies with their levels for specific project, using `requirements.txt` and/or `pyproject.toml`, or, alternatively, by entering the github handle (and thus reviewing another open source project)
 - [x] Minimal backend/frontend with FastAPI and Streamlit
-- [ ] Basic statistics on issues
+- [ ] Basic statistics on issues and pull requests
   - [ ] `num_issues`,`num_open_bug_issues`
+- [ ] Basic statistics on pull requests
+  - [ ] `num_open_pull_requests`
+- [ ] Basic labelling and summarization of open issues
+- [ ] Basic labelling and summarization of pull requests
 - [ ] Deploy as package or container
 
 
 ### WP2: Issues overview, analysis, categorization 
 - [ ] More advanced statistics on issues (kpis and trends):
   - [ ] `num_suspicious_issue_discussions`, `num_toxic_issues`, `num_issues_disagreement_on_if_is_bug` 
+- [ ] More advanced statistics on pull requests (kpis and trends):
+  - [ ] `num_open_pull_requests` per category
+- [ ] More advanced labelling and summarization of open issues
+- [ ] More advanced labelling and summarization of pull requests 
 - [ ] Further repo kpis and trends (need to check if this is not already provided somewhere)
   - [ ] `release_frequency`, `time_to_resolve_critical_bugs`,`maintainer_activity`, 
 - [ ] Issues: Further synthesis for issues, i.e. summary, suggested topic category, etc
