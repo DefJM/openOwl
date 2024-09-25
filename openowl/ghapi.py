@@ -1,7 +1,7 @@
 
 import requests
 
-def get_github_issues(owner, repo, token=None, state="open"):
+def get_issues(owner, repo, token=None, state="open"):
     url = f"https://api.github.com/repos/{owner}/{repo}/issues"
     headers = {
         "Authorization": f"token {token}",
@@ -68,3 +68,7 @@ def get_pull_requests(owner, repo, token, state="open"):
     
     return all_prs
 
+
+def get_diff_content(diff_url):
+    diff = requests.get(diff_url)
+    return diff.text
