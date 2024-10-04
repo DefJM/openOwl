@@ -44,6 +44,65 @@ def get_issue_details(owner, repo, issue_number, token=None):
     return full_issue_data
 
 
+def filter_issue_details(data):
+    issue_keys = [
+        "html_url",
+        "id",
+        "number",
+        "title",
+        "created_at",
+        "updated_at",
+        "closed_at",
+        "body",
+        "author_association",
+        "comments",
+        "state",
+    ]
+    user_keys = ["login", "id", "site_admin"]
+    comment_keys = [
+        "url",
+        "id",
+        "created_at",
+        "updated_at",
+        "author_association",
+        "body",
+        "reactions",
+        "performed_via_github_app",
+    ]
+    filtered_data = {
+        "issue": {key: data["issue"][key] for key in issue_keys if key in data["issue"]}
+    }
+    # Filter user data
+    if "user" in data["issue"]:
+        filtered_data["issue"]["user"] = {
+            key: data["issue"]["user"][key]
+            for key in user_keys
+            if key in data["issue"]["user"]
+        }
+    # Filter reactions
+    if "reactions" in data["issue"]:
+        filtered_data["issue"]["reactions"] = data["issue"]["reactions"]
+    # Filter assignees
+    if "assignees" in data["issue"]:
+        filtered_data["issue"]["assignees"] = data["issue"]["assignees"]
+    # Filter comments
+    if "comments" in data:
+        filtered_data["comments"] = []
+        for comment in data["comments"]:
+            filtered_comment = {
+                key: comment[key] for key in comment_keys if key in comment
+            }
+            # Filter user data for each comment
+            if "user" in comment:
+                filtered_comment["user"] = {
+                    key: comment["user"][key]
+                    for key in user_keys
+                    if key in comment["user"]
+                }
+            filtered_data["comments"].append(filtered_comment)
+    return filtered_data
+
+
 def get_pull_requests(owner, repo, token, state="open"):
     url = f"https://api.github.com/repos/{owner}/{repo}/pulls"
     headers = {

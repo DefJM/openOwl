@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 from openowl.ghapi import (
     get_diff_content,
     get_issue_details,
+    filter_issue_details,
     get_issues,
     get_pull_requests,
 )
@@ -24,18 +25,56 @@ github_token = os.environ.get("GITHUB_TOKEN")  # Optional, but recommended
 with open("data/ghapi_get_issues_requests.json", "r") as file:
     issues = json.load(file)
 
-issue_map = {str(issue["number"]): issue for issue in issues}
-i = issue_map["6793"]
-print(i)
 
 ### get issue details
-issue_number = 6711  # 6793
+issue_number = 6711  # 6793 #5536
 # issue_details = get_issue_details(owner, repo, issue_number, github_token)
 # with open('data/ghapi_get_issue_details_requests_6711.json', 'w') as file:
 #     json.dump(issue_details, file, indent=2)
 with open("data/ghapi_get_issue_details_requests_6711.json", "r") as file:
     issue_details = json.load(file)
 
+
+### filter issue details
+issue_details_filtered = filter_issue_details(issue_details)
+# with open('data/ghapi_get_issue_details_requests_6711_filtered.json', 'w') as file:
+#     json.dump(issue_details_filtered, file, indent=2)
+# with open("data/ghapi_get_issue_details_requests_6711_filtered.json", "r") as file:
+#     issue_details_filtered = json.load(file)
+
+
+# Example usage:
+# with open('paste.txt', 'r') as file:
+#     data = json.load(file)
+# filtered_data = filter_issue_data(data)
+# with open('filtered_issue_data.json', 'w') as file:
+#     json.dump(filtered_data, file, indent=2)
+# print("Filtered data has been saved to 'filtered_issue_data.json'")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Load the JSON data
+with open('paste.txt', 'r') as file:
+    data = json.load(file)
+
+# Filter the data
+filtered_data = filter_issue_data(data)
+
+# Save the filtered data to a new JSON file
+with open('filtered_issue_data.json', 'w') as file:
+    json.dump(filtered_data, file, indent=2)
 
 
 

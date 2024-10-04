@@ -1,10 +1,9 @@
-
+import json
 
 # TODO: Instruct llm to follow vulnerability scoring methodologies such as 
 # https://www.first.org/cvss/v4.0/specification-document, as used by the ossf: https://ossf.github.io/osv-schema/#severitytype-field
 
-bug_classes = """
-
+bug_labels_long = """
 1. Memory Management Issues
    - Memory leaks: Failure to properly deallocate memory, leading to resource exhaustion
    - Use-after-free errors: Accessing memory after it has been freed
@@ -69,7 +68,171 @@ bug_classes = """
     - Type confusion: Treating data of one type as if it were a different type, potentially leading to memory corruption or code execution
 """
 
+bug_labels = """
+<bug_label>Memory Management Issues</bug_label>
+<bug_label>Concurrency Problems</bug_label>
+<bug_label>Pointer Mishandling</bug_label>
+<bug_label>Error Handling Flaws</bug_label>
+<bug_label>API Misuse</bug_label>
+<bug_label>Performance Issues</bug_label>
+<bug_label>Input Validation and Injection</bug_label>
+<bug_label>Authentication and Session Flaws</bug_label>
+<bug_label>Access Control Weaknesses</bug_label>
+<bug_label>Cryptographic Weaknesses</bug_label>
+<bug_label>Misconfigurations</bug_label>
+<bug_label>Data Exposure Risks</bug_label>
+<bug_label>Cross-Site Request Forgery (CSRF)</bug_label>
+<bug_label>Buffer-Related Vulnerabilities</bug_label>
+<bug_label>Hazardous Input Handling</bug_class>
+"""
 
+bug_label_list = [
+    "Memory Management Issues",
+    "Concurrency Problems",
+    "Pointer Mishandling",
+    "Error Handling Flaws",
+    "API Misuse",
+    "Performance Issues",
+    "Input Validation and Injection",
+    "Authentication and Session Flaws",
+    "Access Control Weaknesses",
+    "Cryptographic Weaknesses",
+    "Misconfigurations",
+    "Data Exposure Risks",
+    "Cross-Site Request Forgery (CSRF)",
+    "Buffer-Related Vulnerabilities",
+    "Hazardous Input Handling"
+]
+
+bug_label_dict = {
+  "labels": [
+    {
+      "name": "Memory Management Issues",
+      "description": "Problems related to allocation, deallocation, and usage of memory"
+    },
+    {
+      "name": "Concurrency Problems",
+      "description": "Issues arising from simultaneous execution of multiple processes or threads"
+    },
+    {
+      "name": "Pointer Mishandling",
+      "description": "Incorrect use or management of memory addresses and references"
+    },
+    {
+      "name": "Error Handling Flaws",
+      "description": "Inadequate or improper handling of error conditions and exceptions"
+    },
+    {
+      "name": "API Misuse",
+      "description": "Incorrect usage of application programming interfaces or libraries"
+    },
+    {
+      "name": "Performance Issues",
+      "description": "Problems affecting the speed, responsiveness, or resource usage of the system"
+    },
+    {
+      "name": "Input Validation and Injection",
+      "description": "Vulnerabilities allowing malicious input to manipulate system behavior"
+    },
+    {
+      "name": "Authentication and Session Flaws",
+      "description": "Weaknesses in user identity verification and session management"
+    },
+    {
+      "name": "Access Control Weaknesses",
+      "description": "Improper restrictions on what authenticated users are allowed to do"
+    },
+    {
+      "name": "Cryptographic Weaknesses",
+      "description": "Flaws in the implementation or usage of encryption and security algorithms"
+    },
+    {
+      "name": "Misconfigurations",
+      "description": "Incorrect setup or configuration of software systems and security controls"
+    },
+    {
+      "name": "Data Exposure Risks",
+      "description": "Unintended disclosure or insufficient protection of sensitive information"
+    },
+    {
+      "name": "Cross-Site Request Forgery (CSRF)",
+      "description": "Attacks that force authenticated users to perform unintended actions"
+    },
+    {
+      "name": "Buffer-Related Vulnerabilities",
+      "description": "Issues caused by improper handling of data buffers, often leading to memory corruption"
+    },
+    {
+      "name": "Hazardous Input Handling",
+      "description": "Improper processing of user input, potentially leading to various security vulnerabilities"
+    }
+  ]
+}
+
+issue_label_dict = {
+  "labels": [
+    {
+      "name": "bug",
+      "description": "Something isn't working as expected"
+    },
+    {
+      "name": "enhancement",
+      "description": "New feature or request for improvement"
+    },
+    {
+      "name": "feature",
+      "description": "New functionality to be added"
+    },
+    {
+      "name": "documentation",
+      "description": "Improvements or additions to documentation"
+    },
+    {
+      "name": "help wanted",
+      "description": "Extra attention is needed, contributions welcome"
+    },
+    {
+      "name": "good first issue",
+      "description": "Good for newcomers or first-time contributors"
+    },
+    {
+      "name": "question",
+      "description": "Further information is requested"
+    },
+    {
+      "name": "wontfix",
+      "description": "This will not be worked on"
+    },
+    {
+      "name": "duplicate",
+      "description": "This issue or pull request already exists"
+    },
+    {
+      "name": "invalid",
+      "description": "This doesn't seem right or relevant"
+    },
+    {
+      "name": "priority: high",
+      "description": "Needs to be addressed urgently"
+    },
+    {
+      "name": "priority: low",
+      "description": "Can be addressed later"
+    },
+    {
+      "name": "in progress",
+      "description": "Work on this issue is currently ongoing"
+    },
+    {
+      "name": "needs review",
+      "description": "Ready for review by maintainers"
+    },
+    {
+      "name": "dependencies",
+      "description": "Related to project dependencies"
+    }
+  ]
+}
 
 
 # Taken from: https://www.browserstack.com/guide/types-of-software-bugs
@@ -134,6 +297,5 @@ For example: A banking application experiences a concurrency bug where two users
 
 
 """
-
 
 
