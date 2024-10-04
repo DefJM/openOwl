@@ -1,25 +1,19 @@
 import json
+import re
+from pprint import pprint
 
+import anthropic
 from dotenv import load_dotenv
 
-from openowl.prompt_templates import (
-    bug_label_dict,
-    issue_label_dict,
-)
-from pprint import pprint
+from openowl.prompt_templates import bug_label_dict, issue_label_dict
+
 load_dotenv()
 
 
 # loosely following anthropic's guide https://docs.anthropic.com/en/docs/about-claude/use-case-guides/ticket-routing#time-to-assignment and https://docs.anthropic.com/en/docs/about-claude/use-case-guides/legal-summarization
 
 
-
-import anthropic
-import re
-
-
-
-issue_new_url ="data/ghapi_get_issue_details_requests_5536_filtered.json" 
+issue_new_url = "data/ghapi_get_issue_details_requests_5536_filtered.json"
 with open(issue_new_url, "r") as file:
     issue_new_dict = json.load(file)
 
@@ -74,20 +68,16 @@ def get_issue_summarization_prompt(
         """
     return issue_summerization_prompt
 
-pprint (issue_summarization_prompt)
 
-
-
-
+pprint(issue_summarization_prompt)
 
 
 # Set the default model
-DEFAULT_MODEL="claude-3-haiku-20240307"
+DEFAULT_MODEL = "claude-3-haiku-20240307"
 
 client = anthropic.Anthropic(
     # defaults to os.environ.get("ANTHROPIC_API_KEY")
-    api_key= os.getenv("CLAUDE_API_KEY")
-,
+    api_key=os.getenv("CLAUDE_API_KEY"),
 )
 
 message = client.messages.create(
@@ -99,4 +89,4 @@ message = client.messages.create(
 )
 
 
-pprint (message.content[0].text)
+pprint(message.content[0].text)
