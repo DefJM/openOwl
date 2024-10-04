@@ -1,11 +1,15 @@
-
 import requests
+
+from openowl.logger_config import setup_logger
+
+logger = setup_logger(__name__)
+
 
 def get_issues(owner, repo, token=None, state="open"):
     url = f"https://api.github.com/repos/{owner}/{repo}/issues"
     headers = {
         "Authorization": f"token {token}",
-        "Accept": "application/vnd.github.v3+json"
+        "Accept": "application/vnd.github.v3+json",
     }
     issues = []
     page = 1
@@ -36,39 +40,36 @@ def get_issue_details(owner, repo, issue_number, token=None):
     comments_response = requests.get(comments_url, headers=headers)
     comments_data = comments_response.json()
     # 3. Combine issue data and comments
-    full_issue_data = {
-        "issue": issue_data,
-        "comments": comments_data
-    }
+    full_issue_data = {"issue": issue_data, "comments": comments_data}
     return full_issue_data
-
 
 
 def get_pull_requests(owner, repo, token, state="open"):
     url = f"https://api.github.com/repos/{owner}/{repo}/pulls"
     headers = {
         "Authorization": f"token {token}",
-        "Accept": "application/vnd.github.v3+json"
+        "Accept": "application/vnd.github.v3+json",
     }
     params = {"state": "open"}
-    
     all_prs = []
     page = 1
-    
+
     while True:
         response = requests.get(url, headers=headers, params={**params, "page": page})
         response.raise_for_status()
-        
         prs = response.json()
         if not prs:
             break
-        
         all_prs.extend(prs)
         page += 1
-    
+
     return all_prs
 
 
 def get_diff_content(diff_url):
-    diff = requests.get(diff_url)
-    return diff.text
+    response = requests.get(diff_url)
+    if response.status_code == 200:
+        return response.text
+    else:
+        logger.error(f"Failed to retrieve diff. Status code: {response.status_code}")
+        return None
