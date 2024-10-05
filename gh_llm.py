@@ -73,7 +73,6 @@ def get_issue_summarization(
         Note regarding `issue_label`: Please have a look at following issue label list: {issue_label_dict}. You only need to add new ones if the topic in not in this list
         Note regarding `bug_label`: Please have a look at follwing bug label list: {bug_label_dict}. You only need to add new ones if the topic in not in this list
         
-        The following provides an example for the issue: <example_issue>{issue_example}</example_issue
         Here is the summary example, which would be the resulting output of your summarization system: <example_summary_issue>{issue_summary_example}</example_summary_issue>
 
         The input Github issue data is obtained through the Github API, in JSON-format. 
