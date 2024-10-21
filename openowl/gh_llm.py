@@ -1,12 +1,13 @@
 import json
 import os
+import xml.etree.ElementTree as ET
+from pathlib import Path
 from pprint import pprint
 
 import anthropic
 from dotenv import load_dotenv
 
 from openowl.prompt_templates import bug_label_dict, issue_label_dict
-import xml.etree.ElementTree as ET
 
 load_dotenv()
 
@@ -14,50 +15,10 @@ load_dotenv()
 # loosely following anthropic's guide https://docs.anthropic.com/en/docs/about-claude/use-case-guides/ticket-routing#time-to-assignment and https://docs.anthropic.com/en/docs/about-claude/use-case-guides/legal-summarization
 
 
-def main():
-
-    issue_new_url = "data/ghapi_get_issue_details_requests_5536_filtered.json"
-    with open(issue_new_url, "r") as file:
-        issue_new_dict = json.load(file)
-
-    issue_example_url = "data/ghapi_get_issue_details_requests_6711_filtered.json"
-    with open(issue_example_url, "r") as file:
-        issue_example = json.load(file)
-
-    # issue_summary_example_dict = {
-    #     "tldr": "Requests 2.32.0 strips double slashes in URLs, breaking AWS S3 presigned URLs and potentially other services.",
-    #     "security_relevancy": 2,
-    #     "issue_labels": ["compatibility", "url-handling", "aws-s3"],
-    #     "positivity_negativity": 3,
-    #     "bug_labels": ["regression", "breaking-change"],
-    # }
-
-    issue_summary_example = """
-    <tldr>Requests 2.32.0 strips double slashes in URLs, breaking AWS S3 presigned URLs and potentially other services.</tldr>
-    <security_relevancy>2</security_relevancy>
-    <issue_label>compatibility</issue_label>
-    <issue_label>url-handling</issue_label>
-    <issue_label>aws-s3</issue_label>
-    <positivity_negativity>3</positivity_negativity>
-    <bug_label>regression</bug_label>
-    <bug_label>breaking-change</bug_label>
-    """
-
-    issue_summarization = get_issue_summarization(
-        issue_new_dict,
-        issue_label_dict,
-        bug_label_dict,
-        issue_example,
-        issue_summary_example,
-    )
-    pprint(issue_summarization)
-
-
 def get_issue_summarization(
     issue_new_dict,
     issue_label_dict,
     bug_label_dict,
-    issue_example,
     issue_summary_example,
 ):
     # Define the prompt for the classification task
@@ -104,6 +65,17 @@ def get_issue_summarization(
 
 
 def xml_to_json(xml_string):
+    """
+    Convert XML string to JSON-like dictionary.
+    Wraps XML in root element, parses to dictionary.
+    Handles reasoning tags and converts duplicates to lists.
+
+    Args:
+        xml_string (str): The XML string to be converted.
+
+    Returns:
+        dict: A dictionary representation of the XML content.
+    """
     xml_string = f"<root>{xml_string.strip()}</root>"
     root = ET.fromstring(xml_string)
     # Iterate through all elements in the XML
@@ -124,7 +96,3 @@ def xml_to_json(xml_string):
         else:
             result[tag] = text
     return result
-
-
-if __name__ == "__main__":
-    main()

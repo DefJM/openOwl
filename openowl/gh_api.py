@@ -26,6 +26,18 @@ def get_issues(owner, repo, token=None, state="open"):
 
 
 def get_issue_details(owner, repo, issue_number, token=None):
+    """
+    Fetch detailed information about a specific GitHub issue, including its comments.
+
+    Args:
+        owner (str): The owner of the repository.
+        repo (str): The name of the repository.
+        issue_number (int): The number of the issue to fetch.
+        token (str, optional): GitHub API token for authentication.
+
+    Returns:
+        dict: A dictionary containing the issue data and its comments.
+    """
     base_url = "https://api.github.com"
     # Headers for authentication (if token is provided)
     headers = {}
@@ -45,6 +57,19 @@ def get_issue_details(owner, repo, issue_number, token=None):
 
 
 def filter_issue_details(data):
+    """
+    Filter and extract relevant details from GitHub issue data.
+
+    This function takes the full issue data and filters out specific keys
+    for the issue, user, reactions, assignees, and comments to create a
+    more concise representation of the issue details.
+
+    Args:
+        data (dict): The full GitHub issue data including comments.
+
+    Returns:
+        dict: A filtered dictionary containing relevant issue details.
+    """
     issue_keys = [
         "html_url",
         "id",
@@ -87,7 +112,7 @@ def filter_issue_details(data):
         filtered_data["issue"]["assignees"] = data["issue"]["assignees"]
     # Filter comments
     if "comments" in data:
-        filtered_data["comments"] = []
+        filtered_data["issue"]["comments_details"] = []
         for comment in data["comments"]:
             filtered_comment = {
                 key: comment[key] for key in comment_keys if key in comment
@@ -99,17 +124,29 @@ def filter_issue_details(data):
                     for key in user_keys
                     if key in comment["user"]
                 }
-            filtered_data["comments"].append(filtered_comment)
+            filtered_data["issue"]["comments_details"].append(filtered_comment)
     return filtered_data
 
 
 def get_pull_requests(owner, repo, token, state="open"):
+    """
+    Fetch all pull requests for a given repository.
+
+    Args:
+        owner (str): The owner of the repository.
+        repo (str): The name of the repository.
+        token (str): GitHub API token for authentication.
+        state (str, optional): State of pull requests to fetch. Defaults to "open".
+
+    Returns:
+        list: A list of dictionaries containing pull request data.
+    """
     url = f"https://api.github.com/repos/{owner}/{repo}/pulls"
     headers = {
         "Authorization": f"token {token}",
         "Accept": "application/vnd.github.v3+json",
     }
-    params = {"state": "open"}
+    params = {"state": state}
     all_prs = []
     page = 1
 
@@ -126,6 +163,15 @@ def get_pull_requests(owner, repo, token, state="open"):
 
 
 def get_diff_content(diff_url):
+    """
+    Retrieve the content of a diff from a given URL.
+
+    Args:
+        diff_url (str): The URL of the diff to retrieve.
+
+    Returns:
+        str or None: The content of the diff if successful, None otherwise.
+    """
     response = requests.get(diff_url)
     if response.status_code == 200:
         return response.text
