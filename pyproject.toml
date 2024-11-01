@@ -16,6 +16,8 @@ streamlit = "^1.38.0"
 python-dotenv = "^1.0.1"
 anthropic = "^0.34.2"
 tinydb = "^4.8.2"
+detoxify = "^0.5.2"
+matplotlib = "^3.9.2"
 
 [tool.poetry.group.dev.dependencies]
 jupyter = "^1.0.0"

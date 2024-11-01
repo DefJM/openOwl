@@ -12,7 +12,8 @@ OpenOwl aims to monitor common open-source projects for their dependencies and r
     - [x] List dependencies from open-souerce GitHub repositories
     - [x] List dependencies from local Python project
     - [ ] Check dependencies for existing security advisories, using (which uses https://osv.dev)
-- [ ] Per-dependency analysis with focus on issues
+- [ ] Plot sentiment of issue / pull request comments over time, 1) aggregated per week, 2) as individual datapoints
+- [ ] Per-dependency analysis with focus on **issues**
     - [ ] Summarize current issues
       - [ ] synthesis of issues, what's being discussed, what are major topics spanning across issues? 
       - [ ] Are there topics and issues with high negativity / toxity?
@@ -21,7 +22,7 @@ OpenOwl aims to monitor common open-source projects for their dependencies and r
       - [ ] num issues with higher security relevance
       - [ ] num issues reporting relevant bugs
       - [ ] percentage of issues with significant negative vibe
-- [ ] Per-dependency analysis with focus on pull-requests (first, stick to what's being done above for issues)
+- [ ] Per-dependency analysis with focus on **pull-requests** (first, stick to what's being done above for issues)
 - [ ] Backend/frontend with FastAPI/Streamlit
 - [ ] Run `pip install openowl`. Deploy as Pypi package with proper versioning
 
