@@ -12,7 +12,10 @@ OpenOwl aims to monitor common open-source projects for their dependencies and r
     - [x] List dependencies from open-souerce GitHub repositories
     - [x] List dependencies from local Python project
     - [ ] Check dependencies for existing security advisories, using (which uses https://osv.dev)
-- [ ] Plot sentiment of issue / pull request comments over time, 1) aggregated per week, 2) as individual datapoints
+- [ ] Plot sentiment of issue / pull request comments over time, 
+    - [ ] aggregated per week
+    - [ ] as individual datapoints
+    - [ ] use library https://pythonhosted.org/calmap/#module-calmap?
 - [ ] Per-dependency analysis with focus on **issues**
     - [ ] Summarize current issues
       - [ ] synthesis of issues, what's being discussed, what are major topics spanning across issues? 

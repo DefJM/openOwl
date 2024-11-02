@@ -7,7 +7,7 @@ from pprint import pprint
 import anthropic
 from dotenv import load_dotenv
 
-from openowl.prompt_templates import bug_label_dict, issue_label_dict
+from openowl.prompt_templates import bug_label_dict, issue_label_dict, issue_summary_example
 
 load_dotenv()
 
@@ -17,9 +17,7 @@ load_dotenv()
 
 def get_issue_summarization(
     issue_new_dict,
-    issue_label_dict,
-    bug_label_dict,
-    issue_summary_example,
+    default_model,
 ):
     # Define the prompt for the classification task
     issue_summarization_prompt = f"""You will be acting as a summarization system for Github issues of open source libraries. 
@@ -48,13 +46,12 @@ def get_issue_summarization(
         """
 
     # Set the default model
-    DEFAULT_MODEL = "claude-3-haiku-20240307"
     client = anthropic.Anthropic(
         # defaults to os.environ.get("ANTHROPIC_API_KEY")
         api_key=os.getenv("CLAUDE_API_KEY"),
     )
     message = client.messages.create(
-        model=DEFAULT_MODEL,
+        model=default_model,
         max_tokens=700,
         temperature=0,
         messages=[{"role": "user", "content": issue_summarization_prompt}],

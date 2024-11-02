@@ -235,6 +235,17 @@ issue_label_dict = {
 }
 
 
+issue_summary_example = """
+<tldr>Requests 2.32.0 strips double slashes in URLs, breaking AWS S3 presigned URLs and potentially other services.</tldr>
+<security_relevancy>2</security_relevancy>
+<issue_label>compatibility</issue_label>
+<issue_label>url-handling</issue_label>
+<issue_label>aws-s3</issue_label>
+<positivity_negativity>3</positivity_negativity>
+<bug_label>regression</bug_label>
+<bug_label>breaking-change</bug_label>
+"""
+
 # Taken from: https://www.browserstack.com/guide/types-of-software-bugs
 # "Different Types of Software Bugs: Here are the most common types of software bugs or defects encountered in software testing so that developers and testers can deal with them better."
 """

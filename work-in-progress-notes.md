@@ -39,7 +39,7 @@ Serving will depend on what problem we solve. Need to dig deeper.
 - We offer a CLI tool, which can be used manually, but also as part of CI/CD
 
 
-### Parsing resolved list of packages from lacal python? 
+### Parsing resolved list of packages from local python? 
 
 Use poetry?
 
@@ -59,3 +59,8 @@ installed_packages = get_installed_packages()
 for name, version in installed_packages.items():
     print(f"{name}: {version}")
 ```
+
+### Sentiment analysis
+- So far the sentiment analysis is not very good. Need to improve.
+- Explore other models / LLMs
+- For plotting: use library https://pythonhosted.org/calmap/#module-calmap?
