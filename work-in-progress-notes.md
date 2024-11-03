@@ -63,4 +63,7 @@ for name, version in installed_packages.items():
 ### Sentiment analysis
 - So far the sentiment analysis is not very good. Need to improve.
 - Explore other models / LLMs
+  - Sentiment Analysis in the Era of Large Language Models: A Reality Check https://arxiv.org/abs/2305.15005
+  - Hugging Face: https://huggingface.co/models?pipeline_tag=text-classification&sort=downloads&search=sentiment
+  - https://whylabs.ai/learning-center/llm-use-cases/sentiment-analysis-with-large-language-models-llms
 - For plotting: use library https://pythonhosted.org/calmap/#module-calmap?
