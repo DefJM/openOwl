@@ -1,9 +1,7 @@
-from pprint import pprint
-
 import streamlit as st
 
 from openowl.clients import OpenOwlClient
-from openowl.depsdev_utils import get_deps_table
+from openowl.depsdev_utils import extract_package_url, get_deps_table
 from openowl.logger_config import setup_logger
 
 logger = setup_logger(__name__)
@@ -12,18 +10,52 @@ logger = setup_logger(__name__)
 def main():
     oowl_client = OpenOwlClient()
 
+    st.set_page_config(
+        page_title="OpenOwl",
+        page_icon="🦉",
+        layout="wide",
+        initial_sidebar_state="expanded",
+    )
+
     st.title("Dependency Scan")
-    package_url = st.text_input("Package URL", "https://github.com/pandas-dev/pandas")
 
-    # Scan with package version
-    res = oowl_client.scan_from_url(package_url)
-    df_deps = get_deps_table(res["package_dependencies"])
+    # Move configuration to sidebar
+    with st.sidebar:
+        package_manager = st.selectbox("Package Manager", ["pypi", "npm"])
+        package_name = st.text_input("Package Name", "pandas")
 
+        package_versions = oowl_client.get_package_versions(
+            package_manager, package_name
+        )
+        package_versions.sort(reverse=True)
+        package_version = st.selectbox("Package Version", package_versions)
+
+    # Main content area
     st.markdown(
         f"""
-                Current default version of :green-background[{res["package_name"]}] is: :green-background[{res["package_version"]}].
-                """
+        Package name: `{package_name}`, package manager: `{package_manager}`, package version: `{package_version}`
+        """
     )
+
+    # Scan package with deps.dev api
+    res = oowl_client.scan_from_package_name(
+        package_manager, package_name, package_version
+    )
+
+    package_url = extract_package_url(res)
+    if package_url is None:
+        with st.sidebar:
+            st.markdown("---")  # Visual separator
+            st.markdown(
+                "No repository URL found automatically. Please provide it manually:"
+            )
+            package_url = st.text_input(
+                "GitHub Repository URL", placeholder="https://github.com/owner/repo"
+            )
+    else:
+        st.markdown(f"Package URL: {package_url}")
+
+    df_deps = get_deps_table(res["package_dependencies"])
 
     col1, col2, col3 = st.columns(3)
     with col1:

@@ -10,6 +10,7 @@ from openowl.depsdev_utils import (
     get_default_version,
     get_dependencies,
     get_deps_stats,
+    get_package_version_list,
     get_packages,
     get_version,
 )
@@ -29,6 +30,21 @@ def scan_local(local_root_dir=None):
     dependencies = dependencies["dependencies"]
     dependencies = clean_dependencies(dependencies)
     return dependencies
+
+
+class InputGetPackageVersions(BaseModel):
+    package_manager: str
+    package_name: str
+
+
+@app.post("/get_package_versions")
+def get_package_versions(input: InputGetPackageVersions):
+    package_manager = input.package_manager
+    package_name = input.package_name
+    depsdev_client = DepsDevClient()
+    package_data = get_packages(depsdev_client, package_manager, package_name)
+    version_list = get_package_version_list(package_data)
+    return JSONResponse(content=version_list)
 
 
 class InputRepoFromUrl(BaseModel):
@@ -57,6 +73,45 @@ def scan_from_url(input: InputRepoFromUrl):
     )
     package_dependencies = get_dependencies(
         depsdev_client, system_name, package_name, package_version
+    )
+    num_deps_total, num_deps_direct, num_deps_indirect = get_deps_stats(
+        package_dependencies.json()
+    )
+    return JSONResponse(
+        content={
+            "package_name": package_name,
+            "package_version": package_version,
+            "package_version_data": package_version_data.json(),
+            "package_dependencies": package_dependencies.json(),
+            "num_deps_total": num_deps_total,
+            "num_deps_direct": num_deps_direct,
+            "num_deps_indirect": num_deps_indirect,
+        }
+    )
+
+
+class InputPackageFromName(BaseModel):
+    package_manager: str
+    package_name: str
+    package_version: str
+
+
+@app.post("/scan_from_package_name")
+def scan_from_package_name(input: InputPackageFromName):
+    package_manager = input.package_manager
+    package_name = input.package_name
+    package_version = input.package_version
+
+    depsdev_client = DepsDevClient()
+
+    package_data = get_packages(depsdev_client, package_manager, package_name)
+    if package_version is None:
+        package_version = get_default_version(package_data)
+    package_version_data = get_version(
+        depsdev_client, package_manager, package_name, package_version
+    )
+    package_dependencies = get_dependencies(
+        depsdev_client, package_manager, package_name, package_version
     )
     num_deps_total, num_deps_direct, num_deps_indirect = get_deps_stats(
         package_dependencies.json()
