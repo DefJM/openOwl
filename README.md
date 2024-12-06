@@ -21,6 +21,22 @@ Open Streamlit dashboard
 poetry run streamlit run openowl/app.py 
 ```
 
+### Docker-based development
+
+If you prefer to use docker for development, you can use the provided `docker-compose.yml` file.
+
+You can start the docker-based setup with the following command:
+
+```bash
+docker compose up --build
+```
+
+Do not forget to create a GitHub personal access token in GitHub and add it to the `.env` file in the directory `openowl/`. The `.env` file should look like this:
+
+```txt
+GITHUB_ACCESS_TOKEN="github_pat_1234567890"
+```
+
 ## Limitations
 
 - MVP works only for Python Package Index (PyPi) 
