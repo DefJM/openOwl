@@ -3,12 +3,14 @@ import streamlit as st
 from openowl.clients import OpenOwlClient
 from openowl.depsdev_utils import extract_package_url, get_deps_table
 from openowl.logger_config import setup_logger
+import os
 
 logger = setup_logger(__name__)
 
 
 def main():
-    oowl_client = OpenOwlClient()
+    base_url = os.getenv("OPEN_OWL_CLIENT_BASE_URL", "http://127.0.0.1:8000")
+    oowl_client = OpenOwlClient(base_url=base_url)
 
     st.set_page_config(
         page_title="OpenOwl",

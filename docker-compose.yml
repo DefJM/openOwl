@@ -1,0 +1,27 @@
+services:
+  fastapi:
+    build:
+      context: .
+    working_dir: /app
+    volumes:
+      - .:/app
+    command: poetry run uvicorn openowl.api:app --reload
+    ports:
+      - ${OPEN_OWL_FAST_API_PORT:-8000}:8000
+    depends_on:
+      - streamlit
+    environment:
+      UVICORN_PORT: ${OPEN_OWL_FAST_API_PORT:-8000}
+      UVICORN_HOST: ${OPEN_OWL_FAST_API_HOST:-0.0.0.0}
+
+  streamlit:
+    build:
+      context: .
+    working_dir: /app
+    volumes:
+      - .:/app
+    command: poetry run streamlit run openowl/app.py
+    ports:
+      - ${OPEN_OWL_STREAMLIT_PORT:-8501}:8501
+    environment:
+      OPEN_OWL_CLIENT_BASE_URL: ${OPEN_OWL_CLIENT_BASE_URL:-http://fastapi:8000}
