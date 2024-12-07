@@ -1,5 +1,6 @@
 import re
-
+from packaging import version
+from urllib.parse import urlparse
 from openowl.logger_config import setup_logger
 
 logger = setup_logger(__name__)
@@ -39,3 +40,68 @@ def is_github_repo(url):
     pattern = r"^https?://github\.com/[\w-]+/[\w-]+/?$"
     is_valid = bool(re.match(pattern, url))
     return is_valid
+
+
+def sort_version_list(version_list):
+    def clean_version(v):
+        # Handle common non-standard version formats
+        v = v.replace("-py", "+py")  # Convert -py2.7 to +py2.7 (valid local version)
+        v = v.replace("-", ".")  # Replace other hyphens with dots
+        return v
+
+    # Convert to Version objects for proper comparison
+    version_objects = []
+    for v in version_list:
+        try:
+            version_objects.append(version.parse(clean_version(v)))
+        except version.InvalidVersion as e:
+            print(f"Warning: Could not parse version '{v}': {e}")
+            # Add as string to preserve the version in the list
+            version_objects.append(v)
+
+    # Sort version objects (valid versions will be sorted properly)
+    def sort_key(v):
+        if isinstance(v, str):
+            return (0, v)  # Invalid versions go to the end
+        return (1, v)  # Valid versions sort normally
+
+    sorted_versions = sorted(version_objects, key=sort_key, reverse=True)
+
+    # Convert back to strings
+    return [str(v) for v in sorted_versions]
+
+
+def extract_github_info(github_url):
+    """Extract owner and repo name from GitHub URL.
+
+    Args:
+        github_url (str): GitHub repository URL - can include additional paths
+            like branches, folders, etc.
+
+    Returns:
+        tuple: (owner, repo_name)
+
+    Raises:
+        ValueError: If URL is not a valid GitHub repository URL
+    """
+    try:
+        parsed = urlparse(github_url)
+        if parsed.netloc not in ["github.com", "www.github.com"]:
+            raise ValueError("Not a GitHub URL")
+
+        # Remove trailing slashes and split path
+        path_parts = parsed.path.strip("/").split("/")
+
+        if len(path_parts) < 2:
+            raise ValueError("URL does not contain owner/repo format")
+
+        # Always take the first two parts after github.com
+        # This handles cases like:
+        # /owner/repo
+        # /owner/repo/tree/main/docs
+        # /owner/repo/blob/master/README.md
+        # etc.
+        return path_parts[0], path_parts[1]
+
+    except Exception as e:
+        raise ValueError(f"Invalid GitHub URL: {str(e)}")

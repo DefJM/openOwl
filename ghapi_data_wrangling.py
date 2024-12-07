@@ -1,29 +1,19 @@
-import hashlib
 import os
 
 from dotenv import load_dotenv
 from tinydb import Query, TinyDB
 from tqdm import tqdm
 
+from openowl.clients import OpenOwlClient
+from openowl.db_utils import upsert_dependency
 from openowl.gh_api import filter_issue_details, get_issue_details, get_issues
 from openowl.gh_llm import get_issue_summarization
 from openowl.gh_sentiment_llm_guard import get_toxicity_scores
+from openowl.logger_config import setup_logger
+from openowl.utils import sort_version_list, extract_github_info
 
+logger = setup_logger(__name__)
 load_dotenv()
-
-
-def generate_dependency_hash(dependency):
-    """Create unique identifier string (SHA256 hash) for dependency."""
-    unique_string = f"{dependency['name']}:{dependency['version']}"
-    return hashlib.sha256(unique_string.encode()).hexdigest()
-
-
-def upsert_dependency(dependency, dependencies_table):
-    """Upsert dependency to database."""
-    dep_id = generate_dependency_hash(dependency)
-    dependency["id"] = dep_id
-    dependencies_table.upsert(dependency, Query().id == dep_id)
-    return dep_id
 
 
 def upsert_issue(issue, issues_table):
@@ -66,13 +56,33 @@ def summarize_issues(issues_table, default_model):
         issue["issue_summarization"] = issue_summarization
         issues_table.upsert(issue, Query().id == issue["id"])
 
+    from urllib.parse import urlparse
+
+
 
 def main():
     DEFAULT_MODEL_ISSUE_SUMMARY = "claude-3-haiku-20240307"
 
-    # Initialize TinyDB
-    path_db = os.environ.get("PATH_DB")
-    db = TinyDB(path_db)
+    DEBUG = True  # limit num of issues for debugging
+
+    # Example package
+    package_manager = "pypi"
+    github_url = "https://github.com/pandas-dev/pandas/bla"
+    package_owner, package_name = extract_github_info(github_url)
+    version = None
+
+    # if no version is provided, get latest version
+    if version is None:
+        oowl_client = OpenOwlClient()
+        package_versions = oowl_client.get_package_versions(
+            package_manager, package_name
+        )
+        package_versions = sort_version_list(package_versions)
+        version = package_versions[0]
+        logger.info(f"No version provided, took the latest version: {version}")
+
+    # Initialize/load TinyDB
+    db = TinyDB(os.environ.get("PATH_DB"))
     dependencies_table = db.table("dependencies")
     issues_table = db.table("issues")
     issue_dependency_table = db.table("issue_dependency")
@@ -83,7 +93,13 @@ def main():
     )  # Optional, but recommended
 
     # TODO: add loop over dependencies
-    dependency = {"owner": "psf", "name": "requests", "version": "2.26.0"}  # or None
+
+    dependency = {
+        "package_manager": package_manager,
+        "owner": package_owner,
+        "name": package_name,
+        "version": version,
+    }
     dep_id = upsert_dependency(dependency, dependencies_table)
 
     owner = dependency["owner"]
@@ -93,7 +109,9 @@ def main():
     issues = get_issues(owner, repo, github_access_token)
 
     # get issue details and upsert to db
-    # limit num of issues for debugging:
+    # limit num of issues for debugging: 10
+    if DEBUG:
+        issues = issues[:10]
     for i in tqdm(issues, desc="Processing issues"):
         issue_number = i["number"]
         issue_id = i["id"]
@@ -105,6 +123,8 @@ def main():
         # upsert_issue(issue["issue"])
         link_issue_to_dependency(i["id"], dep_id, issue_dependency_table)
 
+
+    # WIP ############################################################
     # get toxicity scores, add them to the issues table and obtain dataframe
     comments_df = get_toxicity_scores(issues_table)
     # plot toxicity over time

@@ -53,9 +53,9 @@ def url_encode(string):
     return quote(string, safe="")
 
 
-def get_deps_table(deps_json):
-    df = pd.DataFrame([dep["versionKey"] for dep in deps_json["nodes"]])
-    df["relation"] = pd.DataFrame([dep["relation"] for dep in deps_json["nodes"]])
+def get_deps_table(deps_dict):
+    df = pd.DataFrame([dep["versionKey"] for dep in deps_dict["nodes"]])
+    df["relation"] = pd.DataFrame([dep["relation"] for dep in deps_dict["nodes"]])
     df = df.sort_values(by="relation")
     return df
 
@@ -68,7 +68,7 @@ def get_deps_stats(package_dependencies):
     return num_deps_total, num_deps_direct, num_deps_indirect
 
 
-def extract_package_url(response_dict):
+def extract_package_url(deps_dict):
     """
     Extract GitHub repository URL from package metadata.
     First tries deps.dev API response, then falls back to importlib.metadata.
@@ -80,13 +80,13 @@ def extract_package_url(response_dict):
         Optional[str]: GitHub repository URL if found, None otherwise
     """
     # Step 1: Try deps.dev API response
-    links = response_dict["package_version_data"]["links"]
+    links = deps_dict["package_version_data"]["links"]
     for link in links:
         if link["label"] == "SOURCE_REPO":
             return link["url"]
 
     # Step 2: Try importlib.metadata
-    package_name = response_dict["package_name"]
+    package_name = deps_dict["package_name"]
     try:
         url = get_package_url_pypi(package_name)
         if url:
