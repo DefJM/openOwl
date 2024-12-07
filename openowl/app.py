@@ -14,7 +14,6 @@ def main():
 
     st.set_page_config(
         page_title="OpenOwl",
-        page_icon="🦉",
         layout="wide",
         initial_sidebar_state="expanded",
     )
@@ -24,7 +23,8 @@ def main():
     # Move configuration to sidebar
     with st.sidebar:
         package_manager = st.selectbox("Package Manager", ["pypi", "npm"])
-        package_name = st.text_input("Package Name", "pandas")
+        package_github_url = st.text_input("GitHub URL", "https://github.com/pandas-dev/pandas")
+        package_name = package_github_url.split("/")[-1]
 
         package_versions = oowl_client.get_package_versions(
             package_manager, package_name
@@ -58,7 +58,10 @@ def main():
         st.markdown(f"Package URL: {package_url}")
 
     df_deps = get_deps_table(res["package_dependencies"])
-
+    df_deps = df_deps.sort_values(
+        by="relation",
+        key=lambda x: x.map({"SELF": 0, "DIRECT": 1, "INDIRECT": 2})
+    )
     col1, col2, col3 = st.columns(3)
     with col1:
         st.metric("total number of dependencies", res["num_deps_total"])
@@ -67,10 +70,12 @@ def main():
     with col3:
         st.metric("indirect dependencies", res["num_deps_indirect"])
 
-    st.dataframe(
-        df_deps.loc[df_deps["relation"].isin(["DIRECT", "INDIRECT"])],
-        use_container_width=True,
-    )
+
+    st.dataframe(df_deps, use_container_width=True)
+
+
+
+
 
 
 if __name__ == "__main__":
