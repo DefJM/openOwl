@@ -112,7 +112,7 @@ def filter_issue_details(data):
         filtered_data["issue"]["assignees"] = data["issue"]["assignees"]
     # Filter comments
     if "comments" in data:
-        filtered_data["issue"]["comments_details"] = []
+        filtered_data["issue"]["comments_list"] = []
         for comment in data["comments"]:
             filtered_comment = {
                 key: comment[key] for key in comment_keys if key in comment
@@ -124,7 +124,7 @@ def filter_issue_details(data):
                     for key in user_keys
                     if key in comment["user"]
                 }
-            filtered_data["issue"]["comments_details"].append(filtered_comment)
+            filtered_data["issue"]["comments_list"].append(filtered_comment)
     return filtered_data
 
 

@@ -17,13 +17,13 @@ def get_toxicity_scores(issues_table):
     detector = Detoxify("original") # "original" or "multilingual"
     comments_data = []
     total_comments = sum(
-        len(issue.get("comments_details", [])) for issue in issues_table.all()
+        len(issue.get("comments_list", [])) for issue in issues_table.all()
     )
     with tqdm(total=total_comments, desc="Analyzing comment toxicity") as pbar:
         for issue in issues_table.all():
             issue_id = issue["id"]
-            if "comments_details" in issue and len(issue["comments_details"]) > 0:
-                for i, comment in enumerate(issue["comments_details"]):
+            if "comments_list" in issue and len(issue["comments_list"]) > 0:
+                for i, comment in enumerate(issue["comments_list"]):
                     toxicity_scores = detector.predict(comment["body"])
                     # Store sentiment scores in a separate dictionary
                     sentiment_data = {
@@ -35,7 +35,7 @@ def get_toxicity_scores(issues_table):
                         "identity_attack": float(toxicity_scores["identity_attack"]),
                     }
                     # Update the comment in TinyDB with sentiment data
-                    issue["comments_details"][i]["comment_sentiments"] = sentiment_data
+                    issue["comments_list"][i]["comment_sentiments"] = sentiment_data
                     # Create full entry for DataFrame (unchanged)
                     comment_entry = {
                         "datetime": comment["created_at"],
@@ -47,9 +47,9 @@ def get_toxicity_scores(issues_table):
                     }
                     comments_data.append(comment_entry)
                     pbar.update(1)
-                # Update the issue in the database with modified comments_details
+                # Update the issue in the database with modified comments_list
                 issues_table.update(
-                    {"comments_details": issue["comments_details"]},
+                    {"comments_list": issue["comments_list"]},
                     doc_ids=[issue.doc_id],
                 )
     comments_df = pd.DataFrame(comments_data)
