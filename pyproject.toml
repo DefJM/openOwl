@@ -22,6 +22,8 @@ matplotlib = "^3.9.2"
 [tool.poetry.group.dev.dependencies]
 jupyter = "^1.0.0"
 black = "^24.8.0"
+seaborn = "^0.13.2"
+plotly = "^5.24.1"
 
 [build-system]
 requires = ["poetry-core"]

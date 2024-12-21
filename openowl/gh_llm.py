@@ -1,13 +1,14 @@
-import json
 import os
 import xml.etree.ElementTree as ET
-from pathlib import Path
-from pprint import pprint
 
 import anthropic
 from dotenv import load_dotenv
 
-from openowl.prompt_templates import bug_label_dict, issue_label_dict, issue_summary_example
+from openowl.prompt_templates import (
+    bug_label_dict,
+    issue_label_dict,
+    issue_summary_example,
+)
 
 load_dotenv()
 
@@ -17,8 +18,18 @@ load_dotenv()
 
 def get_issue_summarization(
     issue_new_dict,
-    default_model,
+    model,
 ):
+    """
+    Summarize a GitHub issue and its comments using LLM.
+
+    Args:
+        issue_new_dict (dict): The issue data to be summarized.
+        default_model (str): The model to use for summarization.
+
+    Returns:
+        dict: A dictionary containing the summarization results.
+    """
     # Define the prompt for the classification task
     issue_summarization_prompt = f"""You will be acting as a summarization system for Github issues of open source libraries. 
         Your task is to analyze the issue, including its comments, and output the appropriate summary and respective label, alongside with your reasoning. 
@@ -51,7 +62,7 @@ def get_issue_summarization(
         api_key=os.getenv("CLAUDE_API_KEY"),
     )
     message = client.messages.create(
-        model=default_model,
+        model=model,
         max_tokens=700,
         temperature=0,
         messages=[{"role": "user", "content": issue_summarization_prompt}],
@@ -59,6 +70,56 @@ def get_issue_summarization(
     )
     issue_summarization_dict = xml_to_json(message.content[0].text)
     return issue_summarization_dict
+
+
+def get_toxicity_score_llm(
+    comment,
+    model,
+):
+    """
+    Analyze the toxicity of a GitHub comment using LLM.
+
+    Args:
+        comment (str): The comment text to analyze for toxicity.
+        default_model (str): The LLM model to use for toxicity analysis.
+
+    Returns:
+        dict: A dictionary containing toxicity score and the rationale for the score.
+    """
+    # Define the prompt for the classification task
+    toxicity_prompt = f"""You will be acting as a toxicity analysis system for Github comments. 
+        Your task is to analyze the comment and output a toxicity score on the scale from 1 to 5 and rationale.
+        
+        <toxicity_score> Score, between 1 and 5, to assess the comment's toxicity level. 
+        1 = not toxic at all, constructive and respectful
+        2 = mildly negative but not toxic
+        3 = neutral or mildly negative but not toxic
+        4 = moderately toxic, showing negativity or hostility
+        5 = extremely toxic, hostile, or harmful
+        </toxicity_score>
+        
+        <toxicity_rationale> TLDR explanation of why you assigned this toxicity score</toxicity_rationale>
+
+        Here is the comment to analyze:
+        <comment>{comment}</comment>
+
+        Please carefully analyze the above comment and provide your short and concise TLDR rationale in XML format as described.
+        """
+
+    # Set the default model
+    client = anthropic.Anthropic(
+        # defaults to os.environ.get("ANTHROPIC_API_KEY")
+        api_key=os.getenv("CLAUDE_API_KEY"),
+    )
+    message = client.messages.create(
+        model=model,
+        max_tokens=700,
+        temperature=0,
+        messages=[{"role": "user", "content": toxicity_prompt}],
+        stream=False,
+    )
+    toxicity_dict = xml_to_json(message.content[0].text)
+    return toxicity_dict
 
 
 def xml_to_json(xml_string):

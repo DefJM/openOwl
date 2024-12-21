@@ -1,9 +1,17 @@
 # openOwl - Open Source Monitoring and Security
 
 ## Summary
-OpenOwl aims to monitor common open-source projects for their dependencies and related security-relevant information. We focus on analyzing our dependencies' issues and pull requests.
+OpenOwl aims to monitor open-source dependencies and related security-relevant information. History has shown, unfortunatly, that communities can become toxic. 
 
+As a potential early indicator, we focus on analyzing the ongoing communication in these open-source projects, which happens in form of issues and pull requests. Here we try to determine toxicity and other relevant metrics and monitor them over time. 
+
+It is important to note that the goal is not to assess and judge a project's culture. Projects are different and have different styles of discussion. We therefore focus on measuring drift over time, where an increasing level of toxicity is almost always a bad sign. 
+
+Dependencies for the Python library Ragas:
 ![Screenshot web app](assets/streamlit-screenshot.png)
+
+One week of comments from the Python library Pandas:
+![One week of comments in the Python Pandas project](assets/pandas-comments-one-week.png)
 
 ## Features 
 - See [work-in-progress-notes.md](work-in-progress-notes.md)
