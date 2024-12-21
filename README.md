@@ -21,7 +21,6 @@ Open Streamlit dashboard
 poetry run streamlit run openowl/app.py 
 ```
 
-<<<<<<< HEAD
 ### Docker-based development
 
 If you prefer to use docker for development, you can use the provided `docker-compose.yml` file.
@@ -38,10 +37,7 @@ Do not forget to create a GitHub personal access token in GitHub and add it to t
 GITHUB_ACCESS_TOKEN="github_pat_1234567890"
 ```
 
-## Limitations
-=======
 ## Data structure
->>>>>>> 4c90f24 (feat: WIP PoC comment toxicity)
 
 ```Json
 {
