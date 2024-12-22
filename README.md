@@ -1,52 +1,63 @@
 # openOwl - Open Source Monitoring and Security
 
-## Summary
-OpenOwl aims to monitor open-source dependencies and related security-relevant information. History has shown, unfortunatly, that communities can become toxic. 
-
-As a potential early indicator, we focus on analyzing the ongoing communication in these open-source projects, which happens in form of issues and pull requests. Here we try to determine toxicity and other relevant metrics and monitor them over time. 
-
-It is important to note that the goal is not to assess and judge a project's culture. Projects are different and have different styles of discussion. We therefore focus on measuring drift over time, where an increasing level of toxicity is almost always a bad sign. 
+## What is it?
+OpenOwl monitors open-source dependencies by analyzing communication patterns in issues and pull requests. Rather than judging project culture directly, it tracks changes in toxicity levels and other metrics over time. These metrics serve as early warning signals for community issues, which often lead to increased bugs and vulnerabilities.
 
 Dependencies for the Python library Ragas:
 ![Screenshot web app](assets/streamlit-screenshot.png)
 
-One week of comments from the Python library Pandas:
+WiP: One week of comments from the Python library Pandas, see `./notebooks` section:
 ![One week of comments in the Python Pandas project](assets/pandas-comments-one-week.png)
 
-## Features 
-- See [work-in-progress-notes.md](work-in-progress-notes.md)
 
+## Getting started - local development with Poetry
 
-## Getting started
+Prerequisites:
+- Python 3.12
+- Poetry
+- Copy `.env.example` to `.env` and fill in the variables
+- Access to LLM API, currently supported
+  - Anthropic (Claude)
+  - (TBD: Ollama, OpenAI)
+
+Install dependencies
+```Bash
+poetry install
+```
 
 Start fast-api server
 ```Bash
 poetry run uvicorn openowl.api:app --reload
 ```
 
-Open Streamlit dashboard
+Run Streamlit dashboard
 ```Bash
 poetry run streamlit run openowl/app.py 
 ```
+The dashboard should now be available at http://localhost:8501.
 
-### Docker-based development
+## Getting started - Docker-based development
 
 If you prefer to use docker for development, you can use the provided `docker-compose.yml` file.
 
-You can start the docker-based setup with the following command:
+Prerequisites:
+- Docker
+- Docker Compose
+- Copy `.env.example` to `.env` and fill in the variables
+- Access to LLM API, currently supported
+  - Anthropic (Claude)
+  - (TBD: Ollama, OpenAI)
 
+Start the docker-based setup with the following command:
 ```bash
 docker compose up --build
 ```
 
-Do not forget to create a GitHub personal access token in GitHub and add it to the `.env` file in the directory `openowl/`. The `.env` file should look like this:
 
-```txt
-GITHUB_ACCESS_TOKEN="github_pat_1234567890"
-```
+## Features 
+- See [work-in-progress-notes.md](work-in-progress-notes.md)
 
 ## Data structure
-
 ```Json
 {
     "dependencies": {
