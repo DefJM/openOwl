@@ -5,21 +5,21 @@ from tinydb import Query, TinyDB
 from tqdm import tqdm
 
 from openowl.clients import OpenOwlClient
-from openowl.db_utils import upsert_dependency, link_issue_to_dependency
+from openowl.db_utils import link_issue_to_dependency, upsert_dependency
 from openowl.gh_api import filter_issue_details, get_issue_details, get_issues
 from openowl.logger_config import setup_logger
-from openowl.utils import sort_version_list, extract_github_info
+from openowl.utils import extract_github_info, sort_version_list
 
 logger = setup_logger(__name__)
 load_dotenv()
 
 
 def main():
-
     package_manager = "pypi"
-    github_url = "https://github.com/pandas-dev/pandas"
+    github_url = "https://github.com/pydantic/pydantic"
     package_version = None
-    debug = True
+    debug = False
+    max_issues = 400
 
     # extract package info from github url
     package_owner, package_name = extract_github_info(github_url)
@@ -62,6 +62,8 @@ def main():
     # limit num of issues for processing for debugging
     if debug:
         issues = issues[:25]
+    elif max_issues:
+        issues = issues[:max_issues]
 
     # get issues details and upsert to db
     for i in tqdm(issues, desc="Processing issues"):

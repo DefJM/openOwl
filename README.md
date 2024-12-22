@@ -10,8 +10,8 @@ OpenOwl is a set of tools for monitoring open-source projects. While other tools
 Dependencies for the Python library Ragas:
 ![Screenshot web app](assets/streamlit-screenshot.png)
 
-WiP: One week of comments from the Python library Pandas, see `./notebooks` section:
-![One week of comments in the Python Pandas project](assets/pandas-comments-one-week.png)
+WiP: One week of comments from the Python library Pydantic, see `./notebooks` section:
+![One week of comments in the Python Pydantic project](assets/pydantic-comments-one-week.png)
 
 
 ## Getting started - local development with Poetry
