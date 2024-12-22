@@ -20,9 +20,7 @@ Prerequisites:
 - Python 3.12
 - Poetry
 - Copy `.env.example` to `.env` and fill in the variables
-- Access to LLM API, currently supported
-  - Anthropic (Claude)
-  - (TBD: Ollama, OpenAI)
+- Access to LLM API (currently supported: Anthropic (Claude), TBD: Ollama, OpenAI)
 
 Install dependencies
 ```Bash
@@ -48,13 +46,11 @@ Prerequisites:
 - Docker
 - Docker Compose
 - Copy `.env.example` to `.env` and fill in the variables
-- Access to LLM API, currently supported
-  - Anthropic (Claude)
-  - (TBD: Ollama, OpenAI)
+- Access to LLM API (currently supported: Anthropic (Claude), TBD: Ollama, OpenAI)
 
 Start the docker-based setup with the following command:
 ```bash
-docker compose up --build
+docker-compose up --build
 ```
 
 
