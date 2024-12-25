@@ -149,6 +149,7 @@ def update_toxicity_scores_llm(db, model, start_idx=None, end_idx=None, dependen
     return db 
 
 
+
 def create_toxicity_dataframe(db, dependency=None):
     """
     Create a pandas DataFrame from issues table with toxicity analysis results.
