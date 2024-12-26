@@ -7,8 +7,9 @@ assignees: ''
 
 ---
 
-## Feature idea - TLDR
+## TLDR
 - *your TLDR summary of the feature idea here*
+
 
 ## Preliminary checklist
 - [ ] *If you already have a suggestion / idea how to implement this, please add it as checklist items here.*
