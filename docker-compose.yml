@@ -3,7 +3,10 @@ services:
     build:
       context: .
     volumes:
-      - .:/app
+      - ./openowl:/app/openowl
+      - ./data:/app/data
+    env_file:
+      - .env
     command: poetry run uvicorn openowl.api:app --reload
     ports:
       - ${OPEN_OWL_FAST_API_PORT:-8000}:8000
@@ -17,7 +20,10 @@ services:
     build:
       context: .
     volumes:
-      - .:/app
+      - ./openowl:/app/openowl
+      - ./data:/app/data
+    env_file:
+      - .env
     command: poetry run streamlit run openowl/app.py
     ports:
       - ${OPEN_OWL_STREAMLIT_PORT:-8501}:8501

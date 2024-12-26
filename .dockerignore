@@ -13,6 +13,7 @@ htmlcov/
 
 # Virtual Environment
 .env
+.venv/
 .venv
 env/
 venv/
