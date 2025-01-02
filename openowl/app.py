@@ -7,9 +7,10 @@ from tinydb import TinyDB
 from openowl.clients import DepsDevClient, OpenOwlClient
 from openowl.depsdev_utils import get_deps_table
 from openowl.gh_sentiment_analysis import create_toxicity_dataframe
-from openowl.logger_config import setup_logger
-from openowl.utils import extract_github_info, extract_package_info, sort_version_list
 from openowl.graphs import create_score_scatter_plot
+from openowl.logger_config import setup_logger
+from openowl.utils import (extract_github_info, extract_package_info,
+                           sort_version_list)
 
 logger = setup_logger(__name__)
 
@@ -34,32 +35,32 @@ def render_sidebar(oowl_client):
 
 
 def render_community_metrics(db, package_info):
-    st.write(
-        f"# {package_info['name']} {package_info['version']} - Community metrics"
-    )
+    st.write(f"# {package_info['name']} {package_info['version']} - Community metrics")
     st.markdown(
         f"""
         Package manager: `{package_info['package_manager']}`, 
         GitHub URL: {package_info['github_url']}
         """
     )
-    
+
     df = create_toxicity_dataframe(db, package_info)
-    
+
     # Try to show the toxicity plot if data is available
-    if 'toxicity_llm_score' in df.columns:
-        df_filtered = df[df['toxicity_llm_score'].notna()]
+    if "toxicity_llm_score" in df.columns:
+        df_filtered = df[df["toxicity_llm_score"].notna()]
         st.plotly_chart(create_score_scatter_plot(df_filtered))
     else:
         st.warning("LLM toxicity scores are not yet available for this package.")
- 
+
     # Try to show negative reactions plot ("-1") if data is available
-    if 'reactions_minus1' in df.columns:
-        df_filtered = df[df['reactions_minus1'].notna()]
-        st.plotly_chart(create_score_scatter_plot(df_filtered, score_column='reactions_minus1'))
+    if "reactions_minus1" in df.columns:
+        df_filtered = df[df["reactions_minus1"].notna()]
+        st.plotly_chart(
+            create_score_scatter_plot(df_filtered, score_column="reactions_minus1")
+        )
     else:
         st.warning("Negative reactions data is not yet available for this package.")
-        
+
     # Show the dataframe in an expander below the plot
     with st.expander("View detailed data"):
         st.dataframe(df, use_container_width=True)
@@ -82,7 +83,7 @@ def render_dependencies(res):
         by="relation", key=lambda x: x.map({"SELF": 0, "DIRECT": 1, "INDIRECT": 2})
     )
     st.dataframe(df_deps, use_container_width=True)
-    
+
 
 def main():
     base_url = os.getenv("OPEN_OWL_CLIENT_BASE_URL", "http://127.0.0.1:8000")
