@@ -150,7 +150,7 @@ def update_toxicity_scores_llm(db, model, start_idx=None, end_idx=None, dependen
 
 
 
-def create_toxicity_dataframe(db, dependency=None):
+def create_toxicity_dataframe(db, package_info):
     """
     Create a pandas DataFrame from issues table with toxicity analysis results.
 
@@ -163,8 +163,8 @@ def create_toxicity_dataframe(db, dependency=None):
     Returns:
         pandas.DataFrame: DataFrame containing comment data and sentiment scores
     """
-    if dependency:
-        issues_list = filter_issues_by_dependency(db, dependency)
+    if package_info:
+        issues_list = filter_issues_by_dependency(db, package_info)
     else:
         issues_table = db.table("issues")
         issues_list = issues_table.all()
@@ -219,7 +219,14 @@ def create_toxicity_dataframe(db, dependency=None):
                             "reactions_eyes": reactions.get("eyes"),
                         }
                     )
-
+                # Safely get sentiment data (detoxify)
+                if "comment_sentiments" in comment:
+                    toxicity_data = {
+                        f"sentiment_dtxf_{k}": v 
+                        for k, v in comment["comment_sentiments"].items()
+                    }
+                    comment_entry.update(toxicity_data)
+                    
                 # Safely get toxicity data
                 if "comment_sentiments_llm" in comment:
                     toxicity_data = comment["comment_sentiments_llm"]
@@ -238,16 +245,23 @@ def create_toxicity_dataframe(db, dependency=None):
     comments_df_llm = pd.DataFrame(comments_data_llm)
 
     # Convert toxicity score to numeric, handling any non-numeric values
-    comments_df_llm["toxicity_llm_score"] = pd.to_numeric(
-        comments_df_llm["toxicity_llm_score"], errors="coerce"
-    )
-
+    try:
+        comments_df_llm["toxicity_llm_score"] = pd.to_numeric(
+            comments_df_llm["toxicity_llm_score"], errors="coerce"
+        )
+    except (KeyError, AttributeError):
+        # If LLM scores aren't available yet, just return the dataframe without them
+        pass
+    
     # Convert datetime to datetime object
-    comments_df_llm["datetime"] = pd.to_datetime(comments_df_llm["datetime"])
-
-    # Only sort if datetime column exists and has valid values
-    if not comments_df_llm.empty and "datetime" in comments_df_llm.columns:
-        comments_df_llm = comments_df_llm.sort_values("datetime", na_position="last")
+    try:
+        comments_df_llm["datetime"] = pd.to_datetime(comments_df_llm["datetime"])
+        # Only sort if datetime column exists and has valid values
+        if not comments_df_llm.empty:
+            comments_df_llm = comments_df_llm.sort_values("datetime", na_position="last")
+    except (KeyError, AttributeError):
+        # If datetime isn't available, return unsorted dataframe
+        pass
 
     return comments_df_llm
 
