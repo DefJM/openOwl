@@ -1,7 +1,7 @@
 import pandas as pd
 from detoxify import Detoxify
-from tqdm import tqdm
 from tinydb import Query
+from tqdm import tqdm
 
 from openowl.gh_llm import get_toxicity_score_llm
 from openowl.logger_config import setup_logger
@@ -63,7 +63,9 @@ def get_toxicity_scores_detoxify(issues_table):
     return comments_df
 
 
-def update_toxicity_scores_llm(db, model, start_idx=None, end_idx=None, dependency=None):
+def update_toxicity_scores_llm(
+    db, model, start_idx=None, end_idx=None, dependency=None
+):
     """
     Update TinyDB table with toxicity scores for GitHub issue comments using an LLM model.
 
@@ -146,11 +148,10 @@ def update_toxicity_scores_llm(db, model, start_idx=None, end_idx=None, dependen
                         )
                     except Exception as e:
                         logger.error(f"Error updating database: {e}")
-    return db 
+    return db
 
 
-
-def create_toxicity_dataframe(db, dependency=None):
+def create_toxicity_dataframe(db, package_info):
     """
     Create a pandas DataFrame from issues table with toxicity analysis results.
 
@@ -163,15 +164,22 @@ def create_toxicity_dataframe(db, dependency=None):
     Returns:
         pandas.DataFrame: DataFrame containing comment data and sentiment scores
     """
-    if dependency:
-        issues_list = filter_issues_by_dependency(db, dependency)
+    if package_info:
+        issues_list = filter_issues_by_dependency(db, package_info)
     else:
         issues_table = db.table("issues")
         issues_list = issues_table.all()
+
     comments_data_llm = []
     for issue in issues_list:
         issue_id = issue["id"]
-        issue_url = issue.get("html_url")  # Get the issue URL
+        issue_url = issue.get("html_url")
+        issue_title = issue.get("title", "")
+        issue_body = issue.get("body", "")
+        
+        # Add issue title and body for each comment
+        issue_details = f"{issue_title}\n\n{issue_body}"
+        
         if "comments_list" in issue and len(issue["comments_list"]) > 0:
             for comment in issue["comments_list"]:
                 # Create a base entry with None values for all fields
@@ -179,6 +187,7 @@ def create_toxicity_dataframe(db, dependency=None):
                     "datetime": None,
                     "issue_id": issue_id,
                     "issue_url": issue_url,  # Add issue URL to each comment
+                    "parent_issue_details": issue_details,
                     "comment_details": None,
                     "author_association": None,
                     "user": None,
@@ -219,6 +228,13 @@ def create_toxicity_dataframe(db, dependency=None):
                             "reactions_eyes": reactions.get("eyes"),
                         }
                     )
+                # Safely get sentiment data (detoxify)
+                if "comment_sentiments" in comment:
+                    toxicity_data = {
+                        f"sentiment_dtxf_{k}": v
+                        for k, v in comment["comment_sentiments"].items()
+                    }
+                    comment_entry.update(toxicity_data)
 
                 # Safely get toxicity data
                 if "comment_sentiments_llm" in comment:
@@ -238,47 +254,55 @@ def create_toxicity_dataframe(db, dependency=None):
     comments_df_llm = pd.DataFrame(comments_data_llm)
 
     # Convert toxicity score to numeric, handling any non-numeric values
-    comments_df_llm["toxicity_llm_score"] = pd.to_numeric(
-        comments_df_llm["toxicity_llm_score"], errors="coerce"
-    )
+    try:
+        comments_df_llm["toxicity_llm_score"] = pd.to_numeric(
+            comments_df_llm["toxicity_llm_score"], errors="coerce"
+        )
+    except (KeyError, AttributeError):
+        # If LLM scores aren't available yet, just return the dataframe without them
+        pass
 
     # Convert datetime to datetime object
-    comments_df_llm["datetime"] = pd.to_datetime(comments_df_llm["datetime"])
-
-    # Only sort if datetime column exists and has valid values
-    if not comments_df_llm.empty and "datetime" in comments_df_llm.columns:
-        comments_df_llm = comments_df_llm.sort_values("datetime", na_position="last")
+    try:
+        comments_df_llm["datetime"] = pd.to_datetime(comments_df_llm["datetime"])
+        # Only sort if datetime column exists and has valid values
+        if not comments_df_llm.empty:
+            comments_df_llm = comments_df_llm.sort_values(
+                "datetime", na_position="last"
+            )
+    except (KeyError, AttributeError):
+        # If datetime isn't available, return unsorted dataframe
+        pass
 
     return comments_df_llm
-
 
 
 def filter_issues_by_dependency(db, dependency):
     """
     Filter issues table for a specific dependency using package info.
-    
+
     Args:
         db: TinyDB database instance
         dependency: Dict containing package_manager, owner, name and version
-    
+
     Returns:
         List of filtered issues
     """
     # Get dependency from dependencies table
     Dependency = Query()
     dependency_doc = db.table("dependencies").get(
-        (Dependency.package_manager == dependency["package_manager"]) & 
-        (Dependency.owner == dependency["owner"]) &
-        (Dependency.name == dependency["name"]) &
-        (Dependency.version == dependency["version"])
+        (Dependency.package_manager == dependency["package_manager"])
+        & (Dependency.owner == dependency["owner"])
+        & (Dependency.name == dependency["name"])
+        & (Dependency.version == dependency["version"])
     )
-    
+
     if not dependency_doc:
         logger.warning(f"No dependency found matching {dependency}")
         return []
-        
+
     # Use the 'id' field instead of 'doc_id'
-    dependency_id = dependency_doc['id']
+    dependency_id = dependency_doc["id"]
 
     # Get issue IDs associated with this dependency
     IssueDependency = Query()

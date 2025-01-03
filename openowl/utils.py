@@ -2,6 +2,8 @@ import re
 from packaging import version
 from urllib.parse import urlparse
 from openowl.logger_config import setup_logger
+from openowl.depsdev_utils import get_default_version
+from openowl.clients import DepsDevClient
 
 logger = setup_logger(__name__)
 
@@ -105,3 +107,23 @@ def extract_github_info(github_url):
 
     except Exception as e:
         raise ValueError(f"Invalid GitHub URL: {str(e)}")
+
+
+def extract_package_info(package_manager, github_url, package_version=None):
+    # extract package info from github url
+    package_owner, package_name = extract_github_info(github_url)
+
+    # if no version is provided, get latest version
+    if package_version is None:
+        depsdev_client = DepsDevClient()
+        package_version = get_default_version(depsdev_client, package_manager, package_name)
+        logger.info(f"No version provided, took the latest version: {package_version}")
+
+    dependency = {
+        "github_url": github_url,
+        "package_manager": package_manager,
+        "owner": package_owner,
+        "name": package_name,
+        "version": package_version,
+    }
+    return dependency

@@ -7,12 +7,8 @@ OpenOwl is a set of tools for monitoring open-source projects. While other tools
 1. **Monitoring for toxicity and other metrics:** We monitor open-source dependencies by analyzing communication patterns in issues and pull requests. Rather than judging project culture directly, it tracks changes in toxicity levels and other metrics such as length of comment chains, or number of downvotes over time. These metrics serve as early warning signs for community issues, which often lead to increased bugs and vulnerabilities.
 
 ### Screenshots
-Dependencies for the Python library Ragas:
+Work in progress screenshot of the web app:
 ![Screenshot web app](assets/streamlit-screenshot.png)
-
-WiP: One week of comments from the Python library Pydantic, see `./notebooks` section:
-![One week of comments in the Python Pydantic project](assets/pydantic-comments-one-week.png)
-
 
 ## Getting started - local development with Poetry
 

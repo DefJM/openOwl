@@ -13,12 +13,13 @@ def get_packages(client, system_name, package_name):
     return client.get(f"/v3/systems/{system_name}/packages/{package_name}")
 
 
-def get_default_version(raw_response):
+def get_default_version(client, system_name, package_name):
     """parse default version from `get_packages` deps.dev api response"""
+    res = client.get(f"/v3/systems/{system_name}/packages/{package_name}")
     try:
         default_version = next(
             version["versionKey"]["version"]
-            for version in raw_response.json()["versions"]
+            for version in res.json()["versions"]
             if version["isDefault"]
         )
         logger.info(f"The default version is: {default_version}")
