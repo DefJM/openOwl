@@ -32,14 +32,15 @@ def wrap_text(text, width=50):
 
 
 def create_score_scatter_plot(
-    df, comment_column="comment_details", score_column="toxicity_llm_score"
+    df, comment_column="comment_details", score_column="toxicity_llm_score", group_column=None
 ):
-    """Create an interactive scatter plot of toxicity scores.
+    """Create an interactive scatter plot of toxicity scores with connected lines for grouped items.
 
     Args:
         df (pd.DataFrame): DataFrame containing the toxicity data
         comment_column (str): Name of column containing comment text
         score_column (str): Name of column containing toxicity scores
+        group_column (str): Name of column containing group identifiers (PR/Issue IDs)
 
     Returns:
         go.Figure: Plotly figure object
@@ -47,6 +48,25 @@ def create_score_scatter_plot(
     wrapped_comments = [wrap_text(str(text)) for text in df[comment_column]]
 
     fig = go.Figure()
+
+    # If group_column is provided, add lines connecting points within each group
+    if group_column and group_column in df.columns:
+        for group_id in df[group_column].unique():
+            group_data = df[df[group_column] == group_id]
+            fig.add_trace(
+                go.Scatter(
+                    x=group_data["datetime"],
+                    y=group_data[score_column],
+                    mode="lines",
+                    line=dict(
+                        color="rgba(128, 128, 128, 0.2)", 
+                        width=1,
+                        shape='linear'
+                    ),
+                ),
+            )
+
+    # Add scatter points (same as before)
     fig.add_trace(
         go.Scatter(
             x=df["datetime"],
@@ -56,7 +76,6 @@ def create_score_scatter_plot(
                 size=10,
                 color=df[score_column],
                 colorscale=[[0, "green"], [1, "red"]],
-                # colorbar=dict(title=f'{score_column}'),
                 cmin=1,
                 cmax=5,
             ),

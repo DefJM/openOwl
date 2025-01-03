@@ -169,10 +169,17 @@ def create_toxicity_dataframe(db, package_info):
     else:
         issues_table = db.table("issues")
         issues_list = issues_table.all()
+
     comments_data_llm = []
     for issue in issues_list:
         issue_id = issue["id"]
-        issue_url = issue.get("html_url")  # Get the issue URL
+        issue_url = issue.get("html_url")
+        issue_title = issue.get("title", "")
+        issue_body = issue.get("body", "")
+        
+        # Add issue title and body for each comment
+        issue_details = f"{issue_title}\n\n{issue_body}"
+        
         if "comments_list" in issue and len(issue["comments_list"]) > 0:
             for comment in issue["comments_list"]:
                 # Create a base entry with None values for all fields
@@ -180,6 +187,7 @@ def create_toxicity_dataframe(db, package_info):
                     "datetime": None,
                     "issue_id": issue_id,
                     "issue_url": issue_url,  # Add issue URL to each comment
+                    "parent_issue_details": issue_details,
                     "comment_details": None,
                     "author_association": None,
                     "user": None,

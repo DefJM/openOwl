@@ -48,7 +48,14 @@ def render_community_metrics(db, package_info):
     # Try to show the toxicity plot if data is available
     if "toxicity_llm_score" in df.columns:
         df_filtered = df[df["toxicity_llm_score"].notna()]
-        st.plotly_chart(create_score_scatter_plot(df_filtered))
+        st.plotly_chart(
+            create_score_scatter_plot(
+                df_filtered,
+                comment_column="comment_details",
+                group_column="issue_id",
+                score_column="toxicity_llm_score",
+            )
+        )
     else:
         st.warning("LLM toxicity scores are not yet available for this package.")
 
@@ -56,7 +63,12 @@ def render_community_metrics(db, package_info):
     if "reactions_minus1" in df.columns:
         df_filtered = df[df["reactions_minus1"].notna()]
         st.plotly_chart(
-            create_score_scatter_plot(df_filtered, score_column="reactions_minus1")
+            create_score_scatter_plot(
+                df_filtered,
+                comment_column="comment_details",
+                group_column="issue_id",
+                score_column="reactions_minus1",
+            )
         )
     else:
         st.warning("Negative reactions data is not yet available for this package.")
