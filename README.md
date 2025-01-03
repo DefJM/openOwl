@@ -10,7 +10,6 @@ OpenOwl is a set of tools for monitoring open-source projects. While other tools
 Work in progress screenshot of the web app:
 ![Screenshot web app](assets/streamlit-screenshot.png)
 
-
 ## Getting started - local development with Poetry
 
 Prerequisites:

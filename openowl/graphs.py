@@ -60,7 +60,7 @@ def create_score_scatter_plot(
                     mode="lines",
                     line=dict(
                         color="rgba(128, 128, 128, 0.2)", 
-                        width=1,
+                        width=2,
                         shape='linear'
                     ),
                 ),
@@ -102,6 +102,9 @@ def create_score_scatter_plot(
             font=dict(color="var(--text-color, black)", size=12),
             align="left",
         ),
+        yaxis=dict(
+            showgrid=False  # This removes the horizontal grid lines
+        )
     )
 
     return fig
