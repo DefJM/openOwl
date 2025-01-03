@@ -1,8 +1,8 @@
-# openOwl - Open Source Monitoring and Security
+# OpenOwl - Monitoring community health for open-source security
 
 ## What is it?
 
-OpenOwl is a set of tools for monitoring open-source projects. While other tools monitor deterministic security metrics (see [scorecard.dev](https://scorecard.dev), [oss-fuzz](https://github.com/google/oss-fuzz?tab=readme-ov-file), [deps.dev](https://deps.dev), or [osv.dev](https://osv.dev)), OpenOwl focusses on the unstructured communication and community health aspects of open-source projects. 
+OpenOwl is a set of tools for monitoring open-source project communities. While other tools monitor deterministic security metrics (see [scorecard.dev](https://scorecard.dev), [oss-fuzz](https://github.com/google/oss-fuzz?tab=readme-ov-file), [deps.dev](https://deps.dev), or [osv.dev](https://osv.dev)), OpenOwl focusses on the unstructured communication and community health aspects of open-source projects. 
 
 1. **Monitoring for toxicity and other metrics:** We monitor open-source dependencies by analyzing communication patterns in issues and pull requests. Rather than judging project culture directly, it tracks changes in toxicity levels and other metrics such as length of comment chains, or number of downvotes over time. These metrics serve as early warning signs for community issues, which often lead to increased bugs and vulnerabilities.
 
