@@ -4,25 +4,31 @@ from pathlib import Path
 import streamlit as st
 from tinydb import TinyDB
 
-from openowl.clients import DepsDevClient, OpenOwlClient
+from openowl.clients import OpenOwlClient
 from openowl.depsdev_utils import get_deps_table
 from openowl.gh_sentiment_analysis import create_toxicity_dataframe
 from openowl.graphs import create_score_scatter_plot
 from openowl.logger_config import setup_logger
-from openowl.utils import (extract_github_info, extract_package_info,
-                           sort_version_list)
+from openowl.utils import extract_github_info, extract_package_info, sort_version_list
 
 logger = setup_logger(__name__)
 
 
 def render_sidebar(oowl_client):
+    """Renders the streamlit sidebar for package selection and returns package information.
+
+    Args:
+        oowl_client: OpenOwlClient instance for retrieving package versions.
+
+    Returns:
+        dict: Package info with keys: package_manager, github_url, name, version, owner
+    """
     with st.sidebar:
         package_manager = st.selectbox("Package Manager", ["pypi", "npm"])
         package_github_url = st.text_input(
             "GitHub URL", "https://github.com/pandas-dev/pandas"
         )
         _, package_name = extract_github_info(package_github_url)
-
         package_versions = oowl_client.get_package_versions(
             package_manager, package_name
         )
@@ -35,6 +41,18 @@ def render_sidebar(oowl_client):
 
 
 def render_community_metrics(db, package_info):
+    """Renders community metrics section showing toxicity scores and reactions for package issues.
+
+    Displays package information, toxicity score scatter plots, and negative reactions plots
+    if data is available. Shows detailed data in an expandable section.
+
+    Args:
+        db (TinyDB): Database instance containing package and issue data
+        package_info (dict): Dictionary containing package metadata
+
+    Returns:
+        None
+    """
     st.write(f"# {package_info['name']} {package_info['version']} - Community metrics")
     st.markdown(
         f"""
@@ -42,9 +60,7 @@ def render_community_metrics(db, package_info):
         GitHub URL: {package_info['github_url']}
         """
     )
-
     df = create_toxicity_dataframe(db, package_info)
-
     # Try to show the toxicity plot if data is available
     if "toxicity_llm_score" in df.columns:
         df_filtered = df[df["toxicity_llm_score"].notna()]
@@ -58,7 +74,6 @@ def render_community_metrics(db, package_info):
         )
     else:
         st.warning("LLM toxicity scores are not yet available for this package.")
-
     # Try to show negative reactions plot ("-1") if data is available
     if "reactions_minus1" in df.columns:
         df_filtered = df[df["reactions_minus1"].notna()]
@@ -72,13 +87,22 @@ def render_community_metrics(db, package_info):
         )
     else:
         st.warning("Negative reactions data is not yet available for this package.")
-
     # Show the dataframe in an expander below the plot
     with st.expander("View detailed data"):
         st.dataframe(df, use_container_width=True)
 
 
 def render_dependencies(res):
+    """Renders sub-dependencies section showing dependency metrics and a table of dependencies.
+
+    Displays total, direct, and indirect dependency counts, and renders a table of dependencies.
+
+    Args:
+        res (dict): Dictionary containing dependency metrics and dependency data
+
+    Returns:
+        None
+    """
     st.markdown("# Sub-dependencies")
     # render metrics
     col1, col2, col3 = st.columns(3)
@@ -88,7 +112,6 @@ def render_dependencies(res):
         st.metric("direct dependencies", res["num_deps_direct"])
     with col3:
         st.metric("indirect dependencies", res["num_deps_indirect"])
-
     # render dependency table
     df_deps = get_deps_table(res["package_dependencies"])
     df_deps = df_deps.sort_values(

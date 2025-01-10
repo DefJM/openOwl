@@ -1,21 +1,5 @@
 # Work in Progress notes
 
-## Next steps
-
-### MVP
-
-#### Features
-- [x] Simple dependency screen
-    - [x] Return list of dependencies with their levels for Github open source Python project, by entering the github handle
-    - [x] List dependencies from open-souerce GitHub repositories
-- [ ] Plot sentiments / toxicity of issue / pull request comments over time
-- [ ] Get dependency graph from local Python project https://github.com/bndr/pipreqs
-- [ ] Check dependencies for existing security advisories, using (which uses https://osv.dev)
-
-#### Create pip-installable package
-- [ ] Backend/frontend with FastAPI/Streamlit
-- [ ] Run `pip install openowl`. Deploy as Pypi package with proper versioning
-
 
 ## Feature ideas
 
@@ -37,8 +21,6 @@ Actual toxic comments in Github issues and pull requests are hard to find. Curre
 - [ ] Per-dependency analysis pull-requests 
     - [ ] Scope as above for issues
 
-
-
 ### Analyze, categorize, and plot trends on issues and pull requests
 - [ ] More advanced statistics on issues (kpis and trends):
   - [ ] `num_suspicious_issue_discussions`, `num_toxic_issues`, `num_issues_disagreement_on_if_is_bug` 
@@ -58,20 +40,18 @@ Actual toxic comments in Github issues and pull requests are hard to find. Curre
 - [ ] Check security metrics using [OpenSSF ScoreCard](https://github.com/ossf/scorecard)
 
 
-
 ## Notes
 
 ### Notes on graphs and user interface
 - Provide easy-to-digest trends a la [apple health trends](https://support.apple.com/en-us/105003)
 
-### Notes on serving
-Serving will depend on what problem we solve. Need to dig deeper.
-- We serve information and offer overview around dependencies and related issues through a UI.
+### Notes on serving the insights to our endusers
+Serving will depend on what problem we solve.
+- We serve information and offer overview around dependencies and related issues through a Streamlit dashboard.
 - We operate automatic testing integrated into the CI/CD process, or through e.g. the Github Marketplace and integrated into Github Actions
 - We offer a CLI tool, which can be used manually, but also as part of CI/CD
 
 ### Notes on parsing resolved list of packages from local python
-
 - How to do this reliably? 
 - First step start with Python
 - Poetry is one option
@@ -99,10 +79,4 @@ for name, version in installed_packages.items():
   - Sentiment Analysis in the Era of Large Language Models: A Reality Check https://arxiv.org/abs/2305.15005
   - Hugging Face: https://huggingface.co/models?pipeline_tag=text-classification&sort=downloads&search=sentiment
   - https://whylabs.ai/learning-center/llm-use-cases/sentiment-analysis-with-large-language-models-llms
-- For plotting: use library https://pythonhosted.org/calmap/#module-calmap?
-
-- Plotting: There is a library for plotting calendars https://pythonhosted.org/calmap/#module-calmap?
-
-
-
-## "Today I Learned"
+  - Plotting: There is a library for plotting calendars https://pythonhosted.org/calmap/#module-calmap?
