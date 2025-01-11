@@ -54,72 +54,11 @@ docker-compose up --build
 - See [work-in-progress-notes.md](work-in-progress-notes.md)
 
 ## Data structure
-```Json
-{
-    "dependencies": {
-        "<dependency_id>": {
-            "package_manager": "<string>",  // e.g. "pypi"
-            "owner": "<string>",            // e.g. "pandas-dev"
-            "name": "<string>",             // e.g. "pandas"
-            "version": "<string>",          // e.g. "2.2.3"
-            "id": "<string>"                // hash identifier
-        }
-    },
-    "issues": {
-        "<issue_number>": {
-            "html_url": "<string>",
-            "id": "<number>",
-            "number": "<number>",
-            "title": "<string>",
-            "created_at": "<datetime>",
-            "updated_at": "<datetime>",
-            "closed_at": "<datetime|null>",
-            "body": "<string>",
-            "author_association": "<string>",
-            "comments": "<number>",
-            "state": "<string>",            // e.g. "open", "closed"
-            "user": {
-                "login": "<string>",
-                "id": "<number>",
-                "site_admin": "<boolean>"
-            },
-            "reactions": {
-                "url": "<string>",
-                "total_count": "<number>",
-                "+1": "<number>",
-                "-1": "<number>",
-                "laugh": "<number>",
-                "hooray": "<number>",
-                "confused": "<number>",
-                "heart": "<number>",
-                "rocket": "<number>",
-                "eyes": "<number>"
-            },
-            "assignees": [],
-            "comments_list": [
-                {
-                    "url": "<string>",
-                    "id": "<number>",
-                    "created_at": "<datetime>",
-                    "updated_at": "<datetime>",
-                    "author_association": "<string>",
-                    "body": "<string>",
-                    "reactions": {
-                        // same structure as issue reactions
-                    },
-                    "performed_via_github_app": "<any|null>",
-                    "user": {
-                        // same structure as issue user
-                    }
-                }
-            ]
-        }
-    },
-    "issue_dependency": {
-        "<mapping_id>": {
-            "issue_id": "<number>",
-            "dependency_id": "<string>"      // references dependencies[x].id
-        }
-    }
-}
+
+```mermaid
+erDiagram
+    repositories ||--o{ issues : contains
+    issues ||--o{ comments : has
+    issues }|--|| collaborators : "authored by"
+    comments }|--|| collaborators : "authored by"
 ```

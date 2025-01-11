@@ -5,25 +5,25 @@ from openowl.logger_config import setup_logger
 logger = setup_logger(__name__)
 
 
-class Package:
-    """Class to represent a package, collecting all relevant info from
+class Repository:
+    """Class to represent a repository, collecting all relevant info from
     relevant sources and other classes
     """
 
     def __init__(self, url, version=None):
         self.url = url
         self.version = version
-        self.platform = self._identify_package_platform()
+        self.platform = self._identify_repository_platform()
         self.owner, self.name = self._extract_owner_and_name()
 
-    def _identify_package_platform(self):
-        """Identify the platform of the package, e.g. Github or Gitlab
+    def _identify_repository_platform(self):
+        """Identify the platform of the repository, e.g. Github or Gitlab
 
         args:
-            url (str): The URL of the package, e.g. https://github.com/bndr/pipreqs, or https://gitlab.com/bndr/pipreqs
+            url (str): The URL of the repository, e.g. https://github.com/bndr/pipreqs, or https://gitlab.com/bndr/pipreqs
 
         returns:
-            str: The platform of the package, e.g. "github" or "gitlab"
+            str: The platform of the repository, e.g. "github" or "gitlab"
 
         raises:
             ValueError: If URL does not contain a supported platform
