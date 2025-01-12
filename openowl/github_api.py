@@ -71,9 +71,16 @@ class GithubAPI:
 
         return issues
 
-    def get_issue_details(self, owner, repo, issue_number):
+    def get_comments(self, owner, repo, issue_number):
         """Get issue details for a given issue"""
-        pass
+
+        issue_url = f"https://api.github.com/repos/{owner}/{repo}/issues/{issue_number}/comments"
+        params = {
+            "sort": "updated",
+            "direction": "desc",
+        }
+        response = requests.get(issue_url, headers=self.headers, params=params)
+        return response.json()
 
     def get_pull_requests(self, owner, repo):
         """Get pull requests for a given package"""

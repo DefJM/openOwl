@@ -21,7 +21,7 @@ class GithubWorker:
         self.repository = Repository(url, version)
         self.repository_id = self.db.upsert_repository(self.repository)
 
-    def process_issues(self, token=None, state="all", since=None, update=True):
+    def process_issues(self, state="all", since=None, update=True):
         """Process and sync repository issues with the database.
 
         Fetches issues from GitHub API and upserts them into the database. If update=True,
@@ -42,6 +42,7 @@ class GithubWorker:
         if update:
             since = self.db.query_lastest_update_issues(self.repository.url)
         
+        # Process issues
         issues = self.api.get_issues(
             self.repository.owner,
             self.repository.name,
@@ -51,9 +52,10 @@ class GithubWorker:
         self.db.upsert_issues(issues, self.repository_id)
         logger.info(f"Upserted {len(issues)} issues for repository {self.repository.url}")
 
+        # TODO: Update user table from issues (i.e. link existing users to the new issues, and create new users if not found)
 
-    def get_comments(self):
-        """Sync comments (and further issue details) for a given repository with the database
+    def process_comments(self, since=None,update=True):
+        """TODO: Sync comments (and further issue details) for a given repository with the database
         1. get issue details, including comments
         2. upsert issue details as additional data to db issue table
         3. upsert comments-related data to db comments table

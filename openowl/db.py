@@ -258,9 +258,18 @@ class DB:
             f"Updated field latest_update_issues for repository {repository_id} to {latest_update_issues}"
         )
 
+
+    def upsert_users_from_issues(self):
+        """Upsert users from issues into the database"""
+        pass
+
+
+
+
     def upsert_comments(self, comments):
         """Upsert comments into the database"""
         pass
+
 
 
     def query_issues(self, repository_url_list, state="all", since=None):
