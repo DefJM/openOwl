@@ -7,9 +7,11 @@ logger = setup_logger(__name__)
 
 
 class GithubAPI:
-    def __init__(self, token=None):
+    def __init__(self, token=None, api_version="2022-11-28"):
         self.token = token
+        self.api_version = api_version
         self.headers = {
+            "X-GitHub-Api-Version": self.api_version,
             "Authorization": f"token {self.token}",
             "Accept": "application/vnd.github.v3+json",
         }
@@ -56,9 +58,7 @@ class GithubAPI:
 
             while True:
                 page += 1
-                params = {"state": state, "per_page": 100, "page": page}
-                if since:
-                    params["since"] = since
+                params["page"] = page
                 response = requests.get(url, headers=self.headers, params=params)
                 response.raise_for_status()
 

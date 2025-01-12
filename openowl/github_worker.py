@@ -1,4 +1,5 @@
 import os
+from datetime import datetime
 
 from dotenv import load_dotenv
 
@@ -14,23 +15,42 @@ logger = setup_logger(__name__)
 
 # Class to get github data for a given repository
 class GithubWorker:
-    def __init__(self, url, token=None, version=None):
-        self.repository = Repository(url, version)
-        self.api = GithubAPI(token=token)
-        # initialize db
+    def __init__(self, url, version=None, token=None):
+        self.api = GithubAPI(token=os.environ.get("GITHUB_ACCESS_TOKEN"))
         self.db = DB(os.environ.get("PATH_DB"))
+        self.repository = Repository(url, version)
+        self.repository_id = self.db.upsert_repository(self.repository)
 
-    def process_issues(self, token=None, state="open", since=None):
-        """Sync issues for a given repository with the database
-        1. get issues using get_issues method from github_api.py
-        2. upsert issues to db
-          - using json from api response
-          - using upsert_issues method from db.py
+    def process_issues(self, token=None, state="all", since=None, update=True):
+        """Process and sync repository issues with the database.
+
+        Fetches issues from GitHub API and upserts them into the database. If update=True,
+        only fetches issues updated since the last sync, overwriting any provided since parameter.
+
+        Args:
+            token (str, optional): GitHub API token. Defaults to None.
+            state (str, optional): Issue state to fetch ('open', 'closed', 'all'). Defaults to 'all'.
+            since (str, optional): Only fetch issues updated after this timestamp (ISO 8601).
+                Ignored if update=True. Defaults to None.
+            update (bool, optional): If True, only fetch issues since last update,
+                overriding since parameter. Defaults to True.
+
+        Returns:
+            None
         """
-        issues = self.api._get_issues(
-            self.repository.owner, self.repository.name, state, since
+ 
+        if update:
+            since = self.db.query_lastest_update_issues(self.repository.url)
+        
+        issues = self.api.get_issues(
+            self.repository.owner,
+            self.repository.name,
+            state=state,
+            since=since,
         )
-        self.db.upsert_issues(issues)
+        self.db.upsert_issues(issues, self.repository_id)
+        logger.info(f"Upserted {len(issues)} issues for repository {self.repository.url}")
+
 
     def get_comments(self):
         """Sync comments (and further issue details) for a given repository with the database

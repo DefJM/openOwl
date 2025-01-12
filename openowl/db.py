@@ -161,7 +161,7 @@ class DB:
         self.repository_id = result
         return self.repository_id
 
-    def upsert_issues(self, issues, repository_id=None):
+    def upsert_issues(self, issues, repository_id):
         """Upsert issues into the database from GitHub API response.
 
         Args:
@@ -262,6 +262,7 @@ class DB:
         """Upsert comments into the database"""
         pass
 
+
     def query_issues(self, repository_url_list, state="all", since=None):
         """Query issues from the database for given repository URLs with optional filters.
 
@@ -328,12 +329,10 @@ class DB:
                               or None if no issues exist
         """
         query = """
-            SELECT MAX(updated_at) as latest_update
-            FROM issues i
-            JOIN repositories r ON i.repository_id = r.id
-            WHERE r.url = ?
+            SELECT latest_update_issues
+            FROM repositories
+            WHERE url = ?
         """
-
         self.cursor.execute(query, (repository_url,))
         result = self.cursor.fetchone()
 
@@ -345,4 +344,30 @@ class DB:
             return latest_update
 
         logger.info(f"No issues found for repository {repository_url}")
+        return None
+
+    def query_repository_id(self, repository_url: str) -> Optional[int]:
+        """Query the repository ID for a given repository URL.
+        If not found, upsert repository and return id.
+
+        Args:
+            repository_url (str): URL of the repository to query
+
+        Returns:
+            Optional[int]: Repository ID if found, None if not found
+        """
+        # Query existing repository
+        query = """
+            SELECT id 
+            FROM repositories
+            WHERE url = ?
+        """
+        self.cursor.execute(query, (repository_url,))
+        result = self.cursor.fetchone()
+
+        if result:
+            logger.debug(f"Found repository ID {result[0]} for {repository_url}")
+            return result[0]
+
+        logger.debug(f"No repository found for {repository_url}")
         return None
