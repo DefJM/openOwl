@@ -21,14 +21,14 @@ class GithubWorker:
         # initialize db
         self.db = DB(os.environ.get("PATH_DB"))
 
-    def process_issues(self,owner, repo, token=None, state="open"):
+    def process_issues(self, token=None, state="open", since=None):
         """Sync issues for a given repository with the database
         1. get issues using get_issues method from github_api.py
         2. upsert issues to db 
           - using json from api response
           - using upsert_issues method from db.py
         """
-        issues = self.api.get_issues(owner, repo, state)
+        issues = self.api._get_issues(self.repository.owner, self.repository.name, state, since)
         self.db.upsert_issues(issues)
 
 
