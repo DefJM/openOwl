@@ -1,12 +1,11 @@
-import requests
-
-from openowl.logger_config import setup_logger
-from openowl.repository import Repository
-from openowl.github_api import GithubAPI
-from openowl.db import DB
+import os
 
 from dotenv import load_dotenv
-import os
+
+from openowl.db import DB
+from openowl.github_api import GithubAPI
+from openowl.logger_config import setup_logger
+from openowl.repository import Repository
 
 load_dotenv()
 
@@ -24,19 +23,19 @@ class GithubWorker:
     def process_issues(self, token=None, state="open", since=None):
         """Sync issues for a given repository with the database
         1. get issues using get_issues method from github_api.py
-        2. upsert issues to db 
+        2. upsert issues to db
           - using json from api response
           - using upsert_issues method from db.py
         """
-        issues = self.api._get_issues(self.repository.owner, self.repository.name, state, since)
+        issues = self.api._get_issues(
+            self.repository.owner, self.repository.name, state, since
+        )
         self.db.upsert_issues(issues)
 
-
-    
     def get_comments(self):
         """Sync comments (and further issue details) for a given repository with the database
         1. get issue details, including comments
         2. upsert issue details as additional data to db issue table
-        3. upsert comments-related data to db comments table 
+        3. upsert comments-related data to db comments table
         """
         pass

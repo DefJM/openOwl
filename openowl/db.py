@@ -1,6 +1,8 @@
 import sqlite3
+from datetime import datetime
+from pathlib import Path
 from typing import Optional
-from datetime import datetime, timezone
+
 from openowl.logger_config import setup_logger
 
 logger = setup_logger(__name__)
@@ -29,7 +31,11 @@ class DB:
             conn: SQLite database connection object
             cursor: SQLite cursor object for executing queries
         """
-        self.conn = sqlite3.connect(path)
+        # Create the db directory if it doesn't exist
+        if not Path(path).parent.exists():
+            Path(path).parent.mkdir(parents=True, exist_ok=True)
+            logger.info(f"Created directory {Path(path).parent}")
+        self.conn = sqlite3.connect(Path(path))
         self.cursor = self.conn.cursor()
         self._create_tables()
         self.repository_id = None  # Add this line to track current repository
@@ -228,11 +234,12 @@ class DB:
 
     def _latest_update_issues(self, repository_id):
         """Update the repository's last issue update timestamp based on most recent issue update.
-        
+
         Args:
             repository_id (int): ID of the repository to update
         """
-        self.cursor.execute("""
+        self.cursor.execute(
+            """
             UPDATE repositories 
             SET latest_update_issues = (
                 SELECT MAX(updated_at)
@@ -241,16 +248,19 @@ class DB:
             )
             WHERE id = ?
             RETURNING latest_update_issues
-        """, (repository_id, repository_id))
-        
+        """,
+            (repository_id, repository_id),
+        )
+
         latest_update_issues = self.cursor.fetchone()[0]
         self.conn.commit()
-        logger.info(f"Updated field latest_update_issues for repository {repository_id} to {latest_update_issues}")
+        logger.info(
+            f"Updated field latest_update_issues for repository {repository_id} to {latest_update_issues}"
+        )
 
     def upsert_comments(self, comments):
         """Upsert comments into the database"""
         pass
-
 
     def query_issues(self, repository_url_list, state="all", since=None):
         """Query issues from the database for given repository URLs with optional filters.
@@ -307,31 +317,32 @@ class DB:
             )
         return results
 
-
     def query_lastest_update_issues(self, repository_url: str) -> Optional[datetime]:
         """Query the latest update timestamp for issues in the given repository.
-        
+
         Args:
             repository_url (str): URL of the repository to query
-            
+
         Returns:
             Optional[datetime]: Timestamp of the most recently updated issue for the repository,
                               or None if no issues exist
-        """       
+        """
         query = """
             SELECT MAX(updated_at) as latest_update
             FROM issues i
             JOIN repositories r ON i.repository_id = r.id
             WHERE r.url = ?
         """
-        
+
         self.cursor.execute(query, (repository_url,))
         result = self.cursor.fetchone()
-        
+
         if result and result[0]:
-            latest_update = datetime.fromisoformat(result[0].replace('Z', '+00:00'))
-            logger.info(f"Latest issue update for repository {repository_url}: {latest_update}")
+            latest_update = datetime.fromisoformat(result[0].replace("Z", "+00:00"))
+            logger.info(
+                f"Latest issue update for repository {repository_url}: {latest_update}"
+            )
             return latest_update
-            
+
         logger.info(f"No issues found for repository {repository_url}")
         return None

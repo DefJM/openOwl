@@ -26,9 +26,9 @@ api = GithubAPI(token=os.environ.get("GITHUB_ACCESS_TOKEN"))
 db = DB(os.environ.get("PATH_DB"))
 db.upsert_repository(repository)
 
-# # Get and upsert issues
-# issues = api.get_issues(repository.owner, repository.name, state="all", since=None)
-# db.upsert_issues(issues)
+# Get and upsert issues
+issues = api.get_issues(repository.owner, repository.name, state="all", since=None)
+db.upsert_issues(issues)
 
 # Example query to get all issues for the pydantic repository since 2024-11-18
 github_url_list = [
