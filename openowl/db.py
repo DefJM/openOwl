@@ -260,14 +260,14 @@ class DB:
 
 
     def upsert_users_from_issues(self):
-        """Upsert users from issues into the database"""
+        """TODO: Upsert users from issues into the database"""
         pass
 
 
 
 
     def upsert_comments(self, comments):
-        """Upsert comments into the database"""
+        """TODO: Upsert comments into the database"""
         pass
 
 

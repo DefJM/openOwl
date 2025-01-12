@@ -52,10 +52,10 @@ class GithubWorker:
         self.db.upsert_issues(issues, self.repository_id)
         logger.info(f"Upserted {len(issues)} issues for repository {self.repository.url}")
 
-        # TODO: Update user table from issues (i.e. link existing users to the new issues, and create new users if not found)
+        # TODO: Update user table from issues (e.g. "db.upsert_issue_users" i.e. link existing users to the new issues, and create new users if not found)
 
     def process_comments(self, since=None,update=True):
-        """TODO: Sync comments (and further issue details) for a given repository with the database
+        """TODO: Sync comments (and further issue details) for a given repository with the database, should be very similar to process_issues, but for comments. 
         1. get issue details, including comments
         2. upsert issue details as additional data to db issue table
         3. upsert comments-related data to db comments table

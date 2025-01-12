@@ -72,6 +72,7 @@ class GithubAPI:
         return issues
 
     def get_comments(self, owner, repo, issue_number):
+        # TODO: to be completed
         """Get issue details for a given issue"""
 
         issue_url = f"https://api.github.com/repos/{owner}/{repo}/issues/{issue_number}/comments"
