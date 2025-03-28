@@ -72,16 +72,93 @@ class GithubAPI:
         return issues
 
     def get_comments(self, owner, repo, issue_number):
-        # TODO: to be completed
-        """Get issue details for a given issue"""
+        """Get comments for a given issue.
 
-        issue_url = f"https://api.github.com/repos/{owner}/{repo}/issues/{issue_number}/comments"
-        params = {
-            "sort": "updated",
-            "direction": "desc",
-        }
-        response = requests.get(issue_url, headers=self.headers, params=params)
-        return response.json()
+        Args:
+            owner (str): Repository owner
+            repo (str): Repository name
+            issue_number (int): Issue number
+
+        Returns:
+            list: List of comment dictionaries
+        """
+        url = f"https://api.github.com/repos/{owner}/{repo}/issues/{issue_number}/comments"
+        comments = []
+        page = 1
+
+        # Set up initial parameters
+        params = {"per_page": 100, "page": page}
+
+        # First request to get initial batch of comments
+        response = requests.get(url, headers=self.headers, params=params)
+        response.raise_for_status()
+
+        # Get first batch of comments
+        first_batch = response.json()
+        comments.extend(first_batch)
+
+        # Continue fetching pages until no more results
+        while len(first_batch) == params["per_page"]:
+            page += 1
+            params["page"] = page
+            response = requests.get(url, headers=self.headers, params=params)
+            response.raise_for_status()
+
+            page_comments = response.json()
+            if not page_comments:
+                break
+
+            comments.extend(page_comments)
+
+        return comments
+
+    def get_all_issue_comments(self, owner, repo, since=None):
+        """Get all comments for all issues in a repository with progress bar.
+
+        Args:
+            owner (str): Repository owner
+            repo (str): Repository name
+            since (str): Only show comments updated after given time (ISO 8601 format)
+
+        Returns:
+            list: List of comment dictionaries
+        """
+        url = f"https://api.github.com/repos/{owner}/{repo}/issues/comments"
+        comments = []
+        page = 1
+
+        # Set up initial parameters
+        params = {"per_page": 100, "page": page, "sort": "updated", "direction": "desc"}
+
+        if since:
+            params["since"] = since
+
+        # First request to get initial batch of comments
+        response = requests.get(url, headers=self.headers, params=params)
+        response.raise_for_status()
+
+        # Get first batch of comments
+        first_batch = response.json()
+        comments.extend(first_batch)
+
+        # Initialize progress bar with a default size that will adjust
+        with tqdm(desc="Fetching all issue comments") as pbar:
+            pbar.update(len(first_batch))
+
+            while True:
+                page += 1
+                params["page"] = page
+                response = requests.get(url, headers=self.headers, params=params)
+                response.raise_for_status()
+
+                page_comments = response.json()
+                if not page_comments:
+                    break
+
+                comments.extend(page_comments)
+                pbar.update(len(page_comments))
+
+        return comments
 
     def get_pull_requests(self, owner, repo):
         """Get pull requests for a given package"""

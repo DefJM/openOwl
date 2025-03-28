@@ -2,7 +2,7 @@
 
 ## What is it?
 
-OpenOwl is a set of tools for monitoring open-source project communities. While other tools monitor deterministic security metrics (see [scorecard.dev](https://scorecard.dev), [oss-fuzz](https://github.com/google/oss-fuzz?tab=readme-ov-file), [deps.dev](https://deps.dev), or [osv.dev](https://osv.dev)), OpenOwl focusses on the unstructured communication and community health aspects of open-source projects. 
+OpenOwl monitorsopen-source project communities. Other tools monitor deterministic security metrics (see e.g. [scorecard.dev](https://scorecard.dev), [oss-fuzz](https://github.com/google/oss-fuzz?tab=readme-ov-file)). OpenOwl focusses on the unstructured communication of open-source projects. 
 
 1. **Monitoring for toxicity and other metrics:** We monitor open-source dependencies by analyzing communication patterns in issues and pull requests. Rather than judging project culture directly, it tracks changes in toxicity levels and other metrics such as length of comment chains, or number of downvotes over time. These metrics serve as early warning signs for community issues, which often lead to increased bugs and vulnerabilities.
 
@@ -57,8 +57,14 @@ docker-compose up --build
 
 ```mermaid
 erDiagram
-    repositories ||--o{ issues : contains
-    issues ||--o{ comments : has
-    issues }|--|| collaborators : "authored by"
-    comments }|--|| collaborators : "authored by"
+    repositories ||--o{ issues : "repository_id"
+    repositories ||--o{ "pull-requests (TBD)" : "repository_id"
+    repositories ||--o{ comments : "repository_id"
+    
+    issues ||--o{ comments : "issue_id"
+    "pull-requests (TBD)" ||--o{ comments : "pull_request_id"
+    
+    issues }|--|| users : "user_id"
+    "pull-requests (TBD)" }|--|| users : "user_id"
+    comments }|--|| users : "user_id"
 ```

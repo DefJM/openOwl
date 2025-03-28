@@ -62,11 +62,15 @@ class DB:
         self.cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id INTEGER NOT NULL PRIMARY KEY,  -- This will now be GitHub's user ID
                 username TEXT NOT NULL,
                 name TEXT,
                 email TEXT,
-                UNIQUE(username)
+                node_id TEXT,
+                type TEXT,
+                site_admin BOOLEAN,
+                UNIQUE(username),
+                UNIQUE(id)  -- GitHub's user ID is unique
             )
         """
         )
@@ -77,6 +81,7 @@ class DB:
             CREATE TABLE IF NOT EXISTS issues (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 number INTEGER NOT NULL,
+                html_url TEXT NOT NULL,
                 title TEXT NOT NULL,
                 body TEXT,
                 state TEXT,
@@ -89,41 +94,34 @@ class DB:
                 author_association TEXT,
                 state_reason TEXT,
                 repository_id INTEGER NOT NULL,
-                author_id INTEGER NOT NULL,
-                
-                -- User fields
-                user_login TEXT,
-                user_id INTEGER,
-                user_node_id TEXT,
-                user_type TEXT,
-                user_site_admin BOOLEAN,
-                
-                -- Milestone fields
-                milestone_id INTEGER,
-                milestone_number INTEGER,
-                milestone_title TEXT,
-                milestone_state TEXT,
-                milestone_due_on TIMESTAMP,
+                user_id INTEGER NOT NULL,  -- Changed from author_id
                 
                 FOREIGN KEY (repository_id) REFERENCES repositories (id),
-                FOREIGN KEY (author_id) REFERENCES users (id),
+                FOREIGN KEY (user_id) REFERENCES users (id),  -- Changed from author_id
                 UNIQUE(number, repository_id)
             )
         """
         )
 
-        # Comments table
+        # Comments table - updated schema
         self.cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS comments (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id INTEGER PRIMARY KEY, 
+                node_id TEXT,
+                url TEXT,
+                html_url TEXT,
                 body TEXT NOT NULL,
                 created_at TIMESTAMP NOT NULL,
                 updated_at TIMESTAMP,
-                parent_id INTEGER NOT NULL,
-                parent_type TEXT NOT NULL,  -- 'issue' only
-                author_id INTEGER NOT NULL,
-                FOREIGN KEY (author_id) REFERENCES users (id)
+                issue_id INTEGER NOT NULL, 
+                author_association TEXT,
+                user_id INTEGER NOT NULL,
+                repository_id INTEGER NOT NULL,
+                FOREIGN KEY (issue_id) REFERENCES issues (id),
+                FOREIGN KEY (user_id) REFERENCES users (id),
+                FOREIGN KEY (repository_id) REFERENCES repositories (id),
+                UNIQUE(id)
             )
         """
         )
@@ -168,62 +166,78 @@ class DB:
             issues (list): List of issue dictionaries from GitHub API response
             repository_id (int, optional): Repository ID to associate issues with.
                          If not provided, uses the last upserted repository ID.
-
-        Raises:
-            ValueError: If no repository_id is provided or set
         """
-        # Use provided repository_id or fall back to stored one
         repository_id = repository_id or self.repository_id
         if repository_id is None:
             raise ValueError("No repository_id provided or set via upsert_repository")
 
         user_sql = """
-            INSERT INTO users (username)
-            VALUES (?)
-            ON CONFLICT(username) 
-            DO UPDATE SET username=excluded.username
-            RETURNING id
+            INSERT INTO users (id, username, node_id, type, site_admin)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(id) 
+            DO UPDATE SET 
+                username=excluded.username,
+                node_id=excluded.node_id,
+                type=excluded.type,
+                site_admin=excluded.site_admin
         """
 
-        # Then upsert the issues
         issue_sql = """
             INSERT INTO issues (
-                number, title, body, state, created_at, updated_at,
-                repository_id, author_id
+                number, html_url, title, body, state, locked, active_lock_reason,
+                comments, created_at, updated_at, closed_at,
+                author_association, state_reason, repository_id, user_id
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(number, repository_id) DO UPDATE SET
+                html_url = excluded.html_url,
                 title = excluded.title,
                 body = excluded.body,
                 state = excluded.state,
+                locked = excluded.locked,
+                active_lock_reason = excluded.active_lock_reason,
+                comments = excluded.comments,
                 updated_at = excluded.updated_at,
-                author_id = excluded.author_id
+                closed_at = excluded.closed_at,
+                author_association = excluded.author_association,
+                state_reason = excluded.state_reason,
+                user_id = excluded.user_id
             RETURNING id
         """
 
         issue_ids = []
         for issue in issues:
-            # First try to insert/update user and get id
-            try:
-                self.cursor.execute(user_sql, (issue["user"]["login"],))
-                user_id = self.cursor.fetchone()[0]
-            except sqlite3.Error:
-                # Fallback to select if RETURNING isn't supported
-                self.cursor.execute(get_user_sql, (issue["user"]["login"],))
-                user_id = self.cursor.fetchone()[0]
+            # First upsert the user
+            self.cursor.execute(
+                user_sql,
+                (
+                    issue["user"]["id"],
+                    issue["user"]["login"],
+                    issue["user"].get("node_id"),
+                    issue["user"].get("type"),
+                    issue["user"].get("site_admin", False),
+                ),
+            )
 
             # Then upsert the issue
             self.cursor.execute(
                 issue_sql,
                 (
                     issue["number"],
+                    issue["html_url"],
                     issue["title"],
-                    issue["body"],
+                    issue.get("body"),
                     issue["state"],
+                    issue.get("locked", False),
+                    issue.get("active_lock_reason"),
+                    issue.get("comments", 0),
                     issue["created_at"],
                     issue["updated_at"],
+                    issue.get("closed_at"),
+                    issue.get("author_association"),
+                    issue.get("state_reason"),
                     repository_id,
-                    user_id,
+                    issue["user"]["id"],  # Using GitHub's user ID as the foreign key
                 ),
             )
             issue_ids.append(self.cursor.fetchone()[0])
@@ -258,19 +272,108 @@ class DB:
             f"Updated field latest_update_issues for repository {repository_id} to {latest_update_issues}"
         )
 
-
     def upsert_users_from_issues(self):
         """TODO: Upsert users from issues into the database"""
         pass
 
+    def upsert_comments(self, comments, repository_id=None):
+        """Upsert comments into the database from GitHub API response.
 
+        Args:
+            comments (list): List of comment dictionaries from GitHub API response
+            repository_id (int, optional): Repository ID to associate comments with.
+                         If not provided, uses the last upserted repository ID.
 
+        Returns:
+            list: List of comment IDs
+        """
+        repository_id = repository_id or self.repository_id
+        if repository_id is None:
+            raise ValueError("No repository_id provided or set via upsert_repository")
 
-    def upsert_comments(self, comments):
-        """TODO: Upsert comments into the database"""
-        pass
+        user_sql = """
+            INSERT INTO users (id, username, node_id, type, site_admin)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(id) 
+            DO UPDATE SET 
+                username=excluded.username,
+                node_id=excluded.node_id,
+                type=excluded.type,
+                site_admin=excluded.site_admin
+        """
 
+        comment_sql = """
+            INSERT INTO comments (
+                id, node_id, url, html_url, body, created_at, updated_at,
+                issue_id, author_association, user_id, repository_id
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+                node_id = excluded.node_id,
+                url = excluded.url,
+                html_url = excluded.html_url,
+                body = excluded.body,
+                updated_at = excluded.updated_at,
+                author_association = excluded.author_association
+            RETURNING id
+        """
 
+        comment_ids = []
+        for comment in comments:
+            # First upsert the user
+            self.cursor.execute(
+                user_sql,
+                (
+                    comment["user"]["id"],
+                    comment["user"]["login"],
+                    comment["user"].get("node_id"),
+                    comment["user"].get("type"),
+                    comment["user"].get("site_admin", False),
+                ),
+            )
+
+            # Extract issue_id from the issue_url
+            issue_url_parts = comment["issue_url"].split("/")
+            issue_number = int(issue_url_parts[-1])
+
+            # Get the corresponding issue_id from our database
+            self.cursor.execute(
+                "SELECT id FROM issues WHERE number = ? AND repository_id = ?",
+                (issue_number, repository_id),
+            )
+            result = self.cursor.fetchone()
+            if not result:
+                logger.warning(
+                    f"Issue {issue_number} not found in database, skipping comment"
+                )
+                continue
+
+            issue_id = result[0]
+
+            # Then upsert the comment
+            self.cursor.execute(
+                comment_sql,
+                (
+                    comment["id"],
+                    comment.get("node_id"),
+                    comment.get("url"),
+                    comment.get("html_url"),
+                    comment["body"],
+                    comment["created_at"],
+                    comment["updated_at"],
+                    issue_id,
+                    comment.get("author_association"),
+                    comment["user"]["id"],
+                    repository_id,
+                ),
+            )
+            comment_ids.append(self.cursor.fetchone()[0])
+
+        self.conn.commit()
+        logger.info(
+            f"Upserted {len(comment_ids)} comments for repository_id {repository_id}"
+        )
+        return comment_ids
 
     def query_issues(self, repository_url_list, state="all", since=None):
         """Query issues from the database for given repository URLs with optional filters.
@@ -290,7 +393,7 @@ class DB:
             SELECT i.*, r.url as repository_url, u.username as author_username
             FROM issues i
             JOIN repositories r ON i.repository_id = r.id 
-            JOIN users u ON i.author_id = u.id
+            JOIN users u ON i.user_id = u.id
             WHERE r.url IN ({})
         """.format(
             ",".join("?" * len(repository_url_list))
@@ -380,3 +483,119 @@ class DB:
 
         logger.debug(f"No repository found for {repository_url}")
         return None
+
+    def query_user_from_issue(self, issue_id):
+        """Query user from an issue"""
+        query = """
+            SELECT DISTINCT u.id, u.username
+            FROM users u
+            JOIN issues i ON u.id = i.user_id
+            WHERE i.id = ?
+        """
+        self.cursor.execute(query, (issue_id,))
+        result = self.cursor.fetchone()
+        return result
+
+    def query_latest_update_comments(self, repository_url: str) -> Optional[datetime]:
+        """Query the latest update timestamp for comments in the given repository.
+
+        Args:
+            repository_url (str): URL of the repository to query
+
+        Returns:
+            Optional[datetime]: Timestamp of the most recently updated comment for the repository,
+                              or None if no comments exist
+        """
+        query = """
+            SELECT MAX(updated_at) as latest_update
+            FROM comments c
+            JOIN repositories r ON c.repository_id = r.id
+            WHERE r.url = ?
+        """
+        self.cursor.execute(query, (repository_url,))
+        result = self.cursor.fetchone()
+
+        if result and result[0]:
+            latest_update = datetime.fromisoformat(result[0].replace("Z", "+00:00"))
+            logger.info(
+                f"Latest comment update for repository {repository_url}: {latest_update}"
+            )
+            return latest_update
+
+        logger.info(f"No comments found for repository {repository_url}")
+        return None
+
+    def query_issues_by_update_time(
+        self,
+        repository_url,
+        state="all",
+        after=None,
+        limit=None,
+        order_by="updated_at DESC",
+    ):
+        """Query issues from the database for a repository, filtered by update time.
+
+        Args:
+            repository_url (str): Repository URL to query issues for
+            state (str, optional): Filter issues by state ('open', 'closed', 'all').
+                Defaults to 'all'.
+            after (str, optional): ISO format timestamp to filter issues updated after this time.
+                Defaults to None.
+            limit (int, optional): Maximum number of issues to return.
+                Defaults to None (all issues).
+            order_by (str, optional): SQL ORDER BY clause.
+                Defaults to "updated_at DESC" (most recently updated first).
+
+        Returns:
+            list: List of dictionaries containing issue data
+        """
+        # Build base query
+        query = """
+            SELECT i.*, r.url as repository_url, u.username as author_username
+            FROM issues i
+            JOIN repositories r ON i.repository_id = r.id 
+            JOIN users u ON i.user_id = u.id
+            WHERE r.url = ?
+        """
+
+        # Add filters
+        params = [repository_url]
+        if state != "all":
+            query += " AND i.state = ?"
+            params.append(state)
+
+        if after:
+            query += " AND i.updated_at >= ?"
+            params.append(after)
+
+        # Add order by
+        if order_by:
+            query += f" ORDER BY {order_by}"
+
+        # Add limit
+        if limit:
+            query += " LIMIT ?"
+            params.append(limit)
+
+        # Execute query
+        self.cursor.execute(query, params)
+
+        # Get results
+        columns = [desc[0] for desc in self.cursor.description]
+        results = [dict(zip(columns, row)) for row in self.cursor.fetchall()]
+
+        logger.info(
+            f"query_issues_by_update_time: Found {len(results)} issues for repository: {repository_url}"
+        )
+        return results
+
+    def get_comments_for_issue(self, issue_id):
+        """Get all comments for a given issue."""
+        query = """
+            SELECT c.*
+            FROM comments c
+            JOIN issues i ON c.issue_id = i.id
+            WHERE i.id = ?
+        """
+        self.cursor.execute(query, (issue_id,))
+        return self.cursor.fetchall()
