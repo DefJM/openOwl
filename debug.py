@@ -28,6 +28,9 @@ worker = GithubWorker(github_url, package_version, token)
 worker.process_issues(update=False, state="open", since=None)
 worker.process_comments(update=False, since=None)
 
+worker.process_pull_requests(update=False, state="open", since=None)
+worker.process_pull_request_comments(update=False, since=None)
+
 
 ################ couple of queries to the database ################
 
@@ -121,7 +124,7 @@ def show_comments_for_issue(issue_id):
     """
 
     db = DB(os.environ.get("PATH_DB"))
-    comments = db.get_comments_for_issue(issue_id)
+    comments = db.query_comments_for_issue(issue_id)
     print(comments)
 
 

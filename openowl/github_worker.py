@@ -41,7 +41,7 @@ class GithubWorker:
         """
 
         if update:
-            since = self.db.query_lastest_update_issues(self.repository.url)
+            since = self.db.query_latest_update_issues(self.repository.url)
 
         # Process issues
         issues = self.api.get_issues(
@@ -168,5 +168,168 @@ class GithubWorker:
 
         logger.info(
             f"Processed a total of {total_comments} comments for {issues_with_comments}/{len(issues)} issues"
+        )
+        return total_comments
+
+    def process_pull_requests(self, state="all", since=None, update=True):
+        """Process and sync repository pull requests with the database.
+
+        Fetches pull requests from GitHub API and upserts them into the database. If update=True,
+        only fetches pull requests updated since the last sync, overwriting any provided since parameter.
+
+        Args:
+            state (str, optional): Pull request state to fetch ('open', 'closed', 'all'). Defaults to 'all'.
+            since (str, optional): Only fetch pull requests updated after this timestamp (ISO 8601).
+                Ignored if update=True. Defaults to None.
+            update (bool, optional): If True, only fetch pull requests since last update,
+                overriding since parameter. Defaults to True.
+
+        Returns:
+            None
+        """
+        if update:
+            since = self.db.query_latest_update_pull_requests(self.repository.url)
+
+        # Process pull requests
+        pull_requests = self.api.get_pull_requests(
+            self.repository.owner,
+            self.repository.name,
+            state=state,
+            since=since,
+        )
+        self.db.upsert_pull_requests(pull_requests, self.repository_id)
+        logger.info(
+            f"Upserted {len(pull_requests)} pull requests for repository {self.repository.url}"
+        )
+
+    def process_pull_request_comments(
+        self,
+        since=None,
+        update=True,
+        state="all",
+        max_pull_requests=None,
+        recent_first=True,
+        min_comments=0,
+        updated_after=None,
+    ):
+        """Process and sync comments for repository pull requests that are already in the database.
+
+        Args:
+            since (str, optional): Only fetch comments updated after this timestamp (ISO 8601).
+                Ignored if update=True. Defaults to None.
+            update (bool, optional): If True, only fetch comments since last update.
+                Defaults to True.
+            state (str, optional): Filter pull requests by state ('open', 'closed', 'all').
+                Defaults to 'all'.
+            max_pull_requests (int, optional): Maximum number of pull requests to process.
+                If None, processes all pull requests. Defaults to None.
+            recent_first (bool, optional): If True, process most recently updated pull requests first.
+                Defaults to True.
+            min_comments (int, optional): Only process pull requests with at least this many comments.
+                Defaults to 0 (process all PRs).
+            updated_after (str, optional): Only process pull requests updated after this timestamp.
+                Defaults to None.
+
+        Returns:
+            int: Total number of comments processed
+        """
+        # Get the since parameter for comments if updating
+        comments_since = None
+        if update:
+            comments_since = self.db.query_latest_update_comments(self.repository.url)
+        else:
+            comments_since = since
+
+        # Determine the order by clause
+        order_by = "pr.updated_at DESC" if recent_first else "pr.updated_at ASC"
+
+        # Query pull requests from the database
+        pull_requests = self.db.query_pull_requests_by_update_time(
+            self.repository.url,
+            state=state,
+            after=updated_after,
+            limit=max_pull_requests,
+            order_by=order_by,
+        )
+        
+        logger.info(f"Found {len(pull_requests)} pull requests before filtering")
+        
+        # Add debug information about PR comment counts
+        comment_counts = {}
+        for pr in pull_requests:
+            count = pr.get("comments", 0)
+            comment_counts[count] = comment_counts.get(count, 0) + 1
+        
+        logger.info(f"PR comment count distribution: {comment_counts}")
+
+        # Filter pull requests by comment count if specified
+        if min_comments > 0:
+            filtered_prs = [
+                pr for pr in pull_requests if pr.get("comments", 0) >= min_comments
+            ]
+            logger.info(
+                f"Filtered from {len(pull_requests)} to {len(filtered_prs)} pull requests with at least {min_comments} comments"
+            )
+            pull_requests = filtered_prs
+
+        logger.info(
+            f"Processing comments for {len(pull_requests)} pull requests in repository {self.repository.url}"
+        )
+
+        # Process comments for each pull request
+        total_comments = 0
+        prs_with_comments = 0
+
+        # Use tqdm with a more descriptive format
+        with tqdm(
+            total=len(pull_requests),
+            desc=f"PRs updated (0/{len(pull_requests)})",
+            unit="PR",
+        ) as pbar:
+            for i, pr in enumerate(pull_requests):
+                pr_number = pr["number"]
+
+                # Get comments for this pull request
+                comments = self.api.get_pull_request_comments(
+                    self.repository.owner,
+                    self.repository.name,
+                    pr_number,
+                )
+
+                # Filter comments by since date if specified
+                if comments_since and comments:
+                    # Convert comments_since to datetime for comparison if it's a string
+                    if isinstance(comments_since, str):
+                        comments_since = datetime.fromisoformat(
+                            comments_since.replace("Z", "+00:00")
+                        )
+
+                    # Filter comments based on updated_at
+                    filtered_comments = []
+                    for comment in comments:
+                        comment_updated = datetime.fromisoformat(
+                            comment["updated_at"].replace("Z", "+00:00")
+                        )
+                        if comment_updated > comments_since:
+                            filtered_comments.append(comment)
+                    comments = filtered_comments
+
+                # Upsert comments to database
+                if comments:
+                    self.db.upsert_comments(comments, self.repository_id)
+                    total_comments += len(comments)
+                    prs_with_comments += 1
+                    logger.debug(
+                        f"Processed {len(comments)} comments for pull request #{pr_number}"
+                    )
+
+                # Update the progress bar with current status
+                pbar.set_description(
+                    f"PRs updated ({prs_with_comments}/{len(pull_requests)}) - Comments: {total_comments}"
+                )
+                pbar.update(1)
+
+        logger.info(
+            f"Processed a total of {total_comments} comments for {prs_with_comments}/{len(pull_requests)} pull requests"
         )
         return total_comments
