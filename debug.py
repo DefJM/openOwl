@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 from openowl.db import DB
 from openowl.github_api import GithubAPI
 from openowl.github_worker import GithubWorker
+from openowl.analysis_worker import AnalysisWorker
 
 load_dotenv()
 
@@ -17,19 +18,35 @@ load_dotenv()
 
 # github_url="https://github.com/pydantic/pydantic"
 # github_url="https://github.com/pandas-dev/pandas"
-github_url = "https://github.com/psf/requests"
-# github_url="https://github.com/formbricks/formbricks"
+# github_url = "https://github.com/psf/requests"
+github_url="https://github.com/formbricks/formbricks"
 
 package_version = None
 token = os.environ.get("GITHUB_ACCESS_TOKEN")
 
-worker = GithubWorker(github_url, package_version, token)
+db = DB(os.environ.get("PATH_DB"))
+worker = GithubWorker(db, github_url, package_version, token)
 
-worker.process_issues(update=False, state="open", since=None)
-worker.process_comments(update=False, since=None)
 
-worker.process_pull_requests(update=False, state="open", since=None)
-worker.process_pull_request_comments(update=False, since=None)
+# worker.process_issues(update=False, state="open", since=None)
+# worker.process_comments(update=False, since=None)
+
+# worker.process_pull_requests(update=False, state="open", since=None)
+# worker.process_pull_request_comments(update=False, since=None)
+
+worker.process_issues(update=True)
+worker.process_comments(update=True)
+
+worker.process_pull_requests(update=True)
+worker.process_pull_request_comments(update=True)
+
+# Analyze toxicity of comments
+analysis_worker = AnalysisWorker(worker.db, "claude-3-haiku-20240307")
+analysis_worker.update_toxicity_scores_llm(repository_url=github_url)
+
+
+
+
 
 
 ################ couple of queries to the database ################

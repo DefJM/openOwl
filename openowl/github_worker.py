@@ -1,10 +1,9 @@
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from dotenv import load_dotenv
 from tqdm import tqdm
 
-from openowl.db import DB
 from openowl.github_api import GithubAPI
 from openowl.logger_config import setup_logger
 from openowl.repository import Repository
@@ -16,32 +15,45 @@ logger = setup_logger(__name__)
 
 # Class to get github data for a given repository
 class GithubWorker:
-    def __init__(self, url, version=None, token=None):
-        self.api = GithubAPI(token=os.environ.get("GITHUB_ACCESS_TOKEN"))
-        self.db = DB(os.environ.get("PATH_DB"))
+    def __init__(self, db, url, version=None, token=None):
+        # Accept db as parameter instead of creating it internally
+        self.api = GithubAPI(token=token or os.environ.get("GITHUB_ACCESS_TOKEN"))
+        self.db = db
         self.repository = Repository(url, version)
         self.repository_id = self.db.upsert_repository(self.repository)
 
-    def process_issues(self, state="all", since=None, update=True):
+    def process_issues(self, state="all", since=None, update=True, buffer_hours=24):
         """Process and sync repository issues with the database.
 
         Fetches issues from GitHub API and upserts them into the database. If update=True,
-        only fetches issues updated since the last sync, overwriting any provided since parameter.
+        only fetches issues updated since the last sync, with a safety buffer to avoid
+        missing issues if previous runs failed.
 
         Args:
-            token (str, optional): GitHub API token. Defaults to None.
             state (str, optional): Issue state to fetch ('open', 'closed', 'all'). Defaults to 'all'.
             since (str, optional): Only fetch issues updated after this timestamp (ISO 8601).
                 Ignored if update=True. Defaults to None.
             update (bool, optional): If True, only fetch issues since last update,
                 overriding since parameter. Defaults to True.
+            buffer_hours (int, optional): Safety buffer in hours to subtract from the since timestamp.
+                Defaults to 24 hours.
 
         Returns:
             None
         """
-
+        # Apply buffer to since timestamp if updating
         if update:
             since = self.db.query_latest_update_issues(self.repository.url)
+            if since:
+                # Add a safety buffer by subtracting time from the since timestamp
+                if isinstance(since, str):
+                    since_dt = datetime.fromisoformat(since.replace("Z", "+00:00"))
+                else:
+                    since_dt = since
+                buffer_time = timedelta(hours=buffer_hours)
+                since_with_buffer = (since_dt - buffer_time).isoformat()
+                since = since_with_buffer
+                logger.info(f"Using timestamp {since} (original with {buffer_hours}h buffer)")
 
         # Process issues
         issues = self.api.get_issues(
@@ -50,10 +62,37 @@ class GithubWorker:
             state=state,
             since=since,
         )
-        self.db.upsert_issues(issues, self.repository_id)
-        logger.info(
-            f"Upserted {len(issues)} issues for repository {self.repository.url}"
-        )
+        
+        logger.info(f"Fetched {len(issues)} issues for repository {self.repository.url}")
+        
+        # Only proceed with updates if we have issues
+        if not issues:
+            logger.info("No issues to update")
+            return
+        
+        # Get the most recent timestamp from fetched issues
+        most_recent = max(issues, key=lambda x: x["updated_at"])
+        most_recent_timestamp = most_recent["updated_at"]
+        
+        # Transaction for upsert and timestamp update
+        try:
+            # First upsert the issues
+            self.db.upsert_issues(issues, self.repository_id)
+            logger.info(f"Successfully upserted {len(issues)} issues")
+            
+            # Only after successful upsert, update the timestamp
+            timestamp_updated = self.db._update_latest_issues_timestamp(
+                self.repository_id, most_recent_timestamp
+            )
+            if timestamp_updated:
+                logger.info(f"Successfully updated timestamp to {most_recent_timestamp}")
+            else:
+                logger.warning("Failed to update timestamp, next run may reprocess some issues")
+            
+        except Exception as e:
+            logger.error(f"Failed to update issues: {e}")
+            # Don't update the timestamp
+            raise
 
     def process_comments(
         self,
@@ -66,7 +105,7 @@ class GithubWorker:
         updated_after=None,
     ):
         """Process and sync comments for repository issues that are already in the database.
-
+        
         Args:
             since (str, optional): Only fetch comments updated after this timestamp (ISO 8601).
                 Ignored if update=True. Defaults to None.
@@ -93,10 +132,20 @@ class GithubWorker:
         else:
             comments_since = since
 
+        # If we have a comments_since value, use it to filter issues
+        # that may have new comments
+        if comments_since:
+            # Override updated_after with comments_since if it's more recent
+            if updated_after is None or (isinstance(updated_after, str) and 
+                                         isinstance(comments_since, datetime) and
+                                         datetime.fromisoformat(updated_after.replace("Z", "+00:00")) < comments_since):
+                updated_after = comments_since.isoformat() if isinstance(comments_since, datetime) else comments_since
+                logger.info(f"Filtering issues updated after {updated_after} which may have new comments")
+
         # Determine the order by clause
         order_by = "i.updated_at DESC" if recent_first else "i.updated_at ASC"
 
-        # Query issues from the database
+        # Query issues from the database with smart filtering
         issues = self.db.query_issues_by_update_time(
             self.repository.url,
             state=state,
@@ -114,6 +163,9 @@ class GithubWorker:
         logger.info(
             f"Processing comments for {len(issues)} issues in repository {self.repository.url}"
         )
+        if len(issues) == 0:
+            logger.info("No issues need comment updates. Skipping comment processing.")
+            return 0
 
         # Process comments for each issue
         total_comments = 0
@@ -159,6 +211,8 @@ class GithubWorker:
                     logger.debug(
                         f"Processed {len(comments)} comments for issue #{issue_number}"
                     )
+                else:
+                    logger.debug(f"No new comments for issue #{issue_number}")
 
                 # Update the progress bar with current status
                 pbar.set_description(
@@ -189,6 +243,10 @@ class GithubWorker:
         """
         if update:
             since = self.db.query_latest_update_pull_requests(self.repository.url)
+            if since:
+                logger.info(f"Updating pull requests since {since}")
+            else:
+                logger.info("No previous pull requests found, fetching all")
 
         # Process pull requests
         pull_requests = self.api.get_pull_requests(
@@ -239,11 +297,21 @@ class GithubWorker:
             comments_since = self.db.query_latest_update_comments(self.repository.url)
         else:
             comments_since = since
+        
+        # If we have a comments_since value, use it to filter PRs
+        # that may have new comments
+        if comments_since:
+            # Override updated_after with comments_since if it's more recent
+            if updated_after is None or (isinstance(updated_after, str) and 
+                                         isinstance(comments_since, datetime) and
+                                         datetime.fromisoformat(updated_after.replace("Z", "+00:00")) < comments_since):
+                updated_after = comments_since.isoformat() if isinstance(comments_since, datetime) else comments_since
+                logger.info(f"Filtering pull requests updated after {updated_after} which may have new comments")
 
         # Determine the order by clause
         order_by = "pr.updated_at DESC" if recent_first else "pr.updated_at ASC"
 
-        # Query pull requests from the database
+        # Query pull requests from the database with smart filtering
         pull_requests = self.db.query_pull_requests_by_update_time(
             self.repository.url,
             state=state,
@@ -275,6 +343,10 @@ class GithubWorker:
         logger.info(
             f"Processing comments for {len(pull_requests)} pull requests in repository {self.repository.url}"
         )
+        
+        if len(pull_requests) == 0:
+            logger.info("No pull requests need comment updates. Skipping comment processing.")
+            return 0
 
         # Process comments for each pull request
         total_comments = 0
@@ -322,6 +394,8 @@ class GithubWorker:
                     logger.debug(
                         f"Processed {len(comments)} comments for pull request #{pr_number}"
                     )
+                else:
+                    logger.debug(f"No new comments for pull request #{pr_number}")
 
                 # Update the progress bar with current status
                 pbar.set_description(

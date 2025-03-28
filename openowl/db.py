@@ -937,3 +937,92 @@ class DB:
             f"query_pull_requests_by_update_time: Found {len(results)} pull requests for repository: {repository_url}"
         )
         return results
+
+    def query_toxic_comments(self, repository_url=None, min_score=4, limit=100):
+        """Query comments with high toxicity scores.
+        
+        Args:
+            repository_url (str, optional): Repository URL to filter comments by.
+            min_score (int, optional): Minimum toxicity score threshold (1-5). Default is 4.
+            limit (int, optional): Maximum number of comments to return. Default is 100.
+            
+        Returns:
+            list: List of dictionaries containing comment data with high toxicity scores
+        """
+        query = """
+            SELECT c.*, r.url as repository_url, u.username as author_username,
+                   json_extract(c.metric_toxicity_llm, '$.toxicity_score') as toxicity_score,
+                   json_extract(c.metric_toxicity_llm, '$.toxicity_rationale') as toxicity_rationale
+            FROM comments c
+            JOIN repositories r ON c.repository_id = r.id
+            JOIN users u ON c.user_id = u.id
+            WHERE c.metric_toxicity_llm IS NOT NULL
+              AND CAST(json_extract(c.metric_toxicity_llm, '$.toxicity_score') AS INTEGER) >= ?
+        """
+        
+        params = [min_score]
+        
+        if repository_url:
+            query += " AND r.url = ?"
+            params.append(repository_url)
+            
+        query += " ORDER BY toxicity_score DESC, c.created_at DESC LIMIT ?"
+        params.append(limit)
+        
+        self.cursor.execute(query, params)
+        
+        columns = [desc[0] for desc in self.cursor.description]
+        results = [dict(zip(columns, row)) for row in self.cursor.fetchall()]
+        
+        return results
+
+    def update_issues_with_transaction(self, issues, repository_id, latest_timestamp):
+        """Update issues and timestamp in a single atomic transaction"""
+        
+        try:
+            self.conn.execute("BEGIN TRANSACTION")
+            # Upsert all issues
+            # ... existing upsert logic ...
+            
+            # Update timestamp only on success
+            self.cursor.execute(
+                """
+                UPDATE repositories 
+                SET latest_update_issues = ?
+                WHERE id = ?
+                """,
+                (latest_timestamp, repository_id)
+            )
+            self.conn.execute("COMMIT")
+        except Exception as e:
+            self.conn.execute("ROLLBACK")
+            logger.error(f"Transaction failed: {e}")
+            raise
+
+    def _update_latest_issues_timestamp(self, repository_id, timestamp):
+        """Update the repository's latest issues update timestamp in a separate transaction.
+        
+        Args:
+            repository_id (int): ID of the repository to update
+            timestamp (str): ISO format timestamp to set as the latest update time
+            
+        Returns:
+            bool: True if update was successful, False otherwise
+        """
+        try:
+            self.cursor.execute(
+                """
+                UPDATE repositories 
+                SET latest_update_issues = ?
+                WHERE id = ?
+                """,
+                (timestamp, repository_id)
+            )
+            self.conn.commit()
+            logger.info(
+                f"Updated latest_update_issues for repository {repository_id} to {timestamp}"
+            )
+            return True
+        except Exception as e:
+            logger.error(f"Failed to update latest_update_issues timestamp: {e}")
+            return False

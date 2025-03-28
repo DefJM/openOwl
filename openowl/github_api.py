@@ -41,6 +41,7 @@ class GithubAPI:
             "page": page,
             "sort": "updated",  # Sort by update time to work better with since parameter
             "direction": "desc",  # Get most recently updated first
+            "is": "issue"  # Add this line to get only issues (not PRs)
         }
         if since:
             params["since"] = since
@@ -168,8 +169,9 @@ class GithubAPI:
             owner (str): Repository owner
             repo (str): Repository name
             state (str): Pull request state ('open', 'closed', or 'all')
-            since (str): Only show pull requests updated after given time. Must be a timestamp
-                in ISO 8601 format: YYYY-MM-DDTHH:MM:SSZ
+            since (str or datetime): Only show pull requests updated after given time.
+                Can be a timestamp in ISO 8601 format: YYYY-MM-DDTHH:MM:SSZ
+                or a datetime object.
 
         Returns:
             list: List of pull request dictionaries
@@ -187,6 +189,15 @@ class GithubAPI:
             "direction": "desc",  # Get most recently updated first
         }
         
+        # Convert since to datetime object if it's a string
+        since_date = None
+        if since:
+            if isinstance(since, str):
+                since_date = datetime.fromisoformat(since.replace("Z", "+00:00"))
+            else:
+                # Assume it's already a datetime object
+                since_date = since
+        
         # Note: GitHub's pull requests endpoint doesn't support 'since' parameter directly.
         # We'll filter manually after fetching if needed.
 
@@ -198,8 +209,7 @@ class GithubAPI:
         first_batch = response.json()
         
         # Filter by since if provided
-        if since:
-            since_date = datetime.fromisoformat(since.replace("Z", "+00:00"))
+        if since_date:
             first_batch = [
                 pr for pr in first_batch
                 if datetime.fromisoformat(pr["updated_at"].replace("Z", "+00:00")) > since_date
@@ -222,7 +232,7 @@ class GithubAPI:
                     break
                     
                 # Filter by since if provided
-                if since:
+                if since_date:
                     page_prs = [
                         pr for pr in page_prs
                         if datetime.fromisoformat(pr["updated_at"].replace("Z", "+00:00")) > since_date
