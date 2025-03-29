@@ -298,8 +298,7 @@ class GithubWorker:
         else:
             comments_since = since
         
-        # If we have a comments_since value, use it to filter PRs
-        # that may have new comments
+        # Filter PRs based on comments_since timestamp if specified
         if comments_since:
             # Override updated_after with comments_since if it's more recent
             if updated_after is None or (isinstance(updated_after, str) and 
@@ -336,16 +335,16 @@ class GithubWorker:
                 pr for pr in pull_requests if pr.get("comments", 0) >= min_comments
             ]
             logger.info(
-                f"Filtered from {len(pull_requests)} to {len(filtered_prs)} pull requests with at least {min_comments} comments"
+                f"Filtered to {len(filtered_prs)} PRs with {min_comments}+ comments"
             )
             pull_requests = filtered_prs
 
         logger.info(
-            f"Processing comments for {len(pull_requests)} pull requests in repository {self.repository.url}"
+            f"Processing {len(pull_requests)} PR comments for {self.repository.url}"
         )
         
         if len(pull_requests) == 0:
-            logger.info("No pull requests need comment updates. Skipping comment processing.")
+            logger.info("No PRs need comment updates. Skipping.")
             return 0
 
         # Process comments for each pull request

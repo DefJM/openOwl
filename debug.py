@@ -28,8 +28,12 @@ db = DB(os.environ.get("PATH_DB"))
 
 # Choose the provider and model
 # provider = "claude"  # Use Claude API
-provider = "ollama"  # Use Ollama API
-model = "claude-3-5-haiku-20241022" if provider == "claude" else "gemma3:4b"
+# model = "claude-3-5-haiku-20241022" 
+
+provider = "ollama"
+# model = "gemma3:12b"
+model = "gemma3:4b"
+# model = "gemma3:1b"
 
 worker = GithubWorker(db, github_url, package_version, token)
 
