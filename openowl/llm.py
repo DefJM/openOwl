@@ -92,7 +92,7 @@ def get_toxicity_score_llm(comment, model):
         5 = extremely toxic, hostile, or harmful
         </toxicity_score>
         
-        <toxicity_rationale> TLDR explanation of why you assigned this toxicity score</toxicity_rationale>
+        <toxicity_rationale> VERY SHORT (!!) TLDR reasoningwhy you assigned the above toxicity score</toxicity_rationale>
 
         Here is the comment to analyze:
         <comment>{comment}</comment>
