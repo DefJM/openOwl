@@ -952,7 +952,11 @@ class DB:
         query = """
             SELECT c.*, r.url as repository_url, u.username as author_username,
                    json_extract(c.metric_toxicity_llm, '$.toxicity_score') as toxicity_score,
-                   json_extract(c.metric_toxicity_llm, '$.toxicity_rationale') as toxicity_rationale
+                   json_extract(c.metric_toxicity_llm, '$.toxicity_rationale') as toxicity_rationale,
+                   json_extract(c.metric_toxicity_llm, '$.model_info.model_name') as model_name,
+                   json_extract(c.metric_toxicity_llm, '$.model_info.provider') as provider,
+                   json_extract(c.metric_toxicity_llm, '$.eval_metadata.timestamp') as eval_timestamp,
+                   json_extract(c.metric_toxicity_llm, '$.eval_metadata.prompt_version') as prompt_version
             FROM comments c
             JOIN repositories r ON c.repository_id = r.id
             JOIN users u ON c.user_id = u.id
