@@ -23,10 +23,10 @@ github_url="https://github.com/formbricks/formbricks"
 
 package_version = None
 token = os.environ.get("GITHUB_ACCESS_TOKEN")
-
 db = DB(os.environ.get("PATH_DB"))
-worker = GithubWorker(db, github_url, package_version, token)
+model = "claude-3-5-haiku-20241022"
 
+worker = GithubWorker(db, github_url, package_version, token)
 
 # worker.process_issues(update=False, state="open", since=None)
 # worker.process_comments(update=False, since=None)
@@ -34,15 +34,15 @@ worker = GithubWorker(db, github_url, package_version, token)
 # worker.process_pull_requests(update=False, state="open", since=None)
 # worker.process_pull_request_comments(update=False, since=None)
 
-worker.process_issues(update=True)
-worker.process_comments(update=True)
+# worker.process_issues(update=True)
+# worker.process_comments(update=True)
 
-worker.process_pull_requests(update=True)
-worker.process_pull_request_comments(update=True)
+# worker.process_pull_requests(update=True)
+# worker.process_pull_request_comments(update=True)
 
 # Analyze toxicity of comments
-analysis_worker = AnalysisWorker(worker.db, "claude-3-haiku-20240307")
-analysis_worker.update_toxicity_scores_llm(repository_url=github_url)
+analysis_worker = AnalysisWorker(worker.db, model)
+analysis_worker.update_toxicity_scores_llm(repository_urls=github_url, start_date="2025-03-01", end_date=None)
 
 
 
@@ -145,17 +145,17 @@ def show_comments_for_issue(issue_id):
     print(comments)
 
 
-show_comments_for_issue(1)
+# show_comments_for_issue(1)
 
 
-show_table_contents()
+# show_table_contents()
 
-show_table_contents("issues")
+# show_table_contents("issues")
 
-show_table_contents("repositories")
+# show_table_contents("repositories")
 
-show_table_contents("users")
+# show_table_contents("users")
 
-show_table_contents("comments")
+# show_table_contents("comments")
 
-show_existing_tables()
+# show_existing_tables()

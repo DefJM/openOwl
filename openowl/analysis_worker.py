@@ -1,4 +1,5 @@
 import json
+from datetime import datetime, timedelta
 
 from tqdm import tqdm
 
@@ -33,27 +34,54 @@ class AnalysisWorker:
 
     def update_toxicity_scores_llm(
         self,
-        repository_url=None,
+        repository_urls=None,
         start_date=None,
         end_date=None,
         limit=None,
         batch_size=100,
+        repository_url=None,  # Add old parameter for backward compatibility
     ):
         """
         Update the comments table with toxicity scores for GitHub comments using an LLM model.
 
         Args:
-            repository_url (str, optional): URL of the repository to analyze. If None, analyzes all repositories.
+            repository_urls (list or str, optional): URL(s) of the repositories to analyze. 
+                If None, analyzes all repositories. Can be a single URL string or a list of URLs.
             start_date (str, optional): ISO format date to filter comments created on or after this date.
+                If None and end_date is provided, defaults to 2 months before end_date.
             end_date (str, optional): ISO format date to filter comments created before this date.
+                If None, defaults to current date.
             limit (int, optional): Maximum number of comments to process. If None, processes all matching comments.
             batch_size (int, optional): Number of comments to process in each batch for efficient processing.
+            repository_url (str, optional): Deprecated. URL of a repository to analyze. Use repository_urls instead.
 
         Returns:
             int: The number of comments processed and updated
         """
+        # Handle backward compatibility with repository_url parameter
+        if repository_url is not None:
+            if repository_urls is not None:
+                logger.warning("Both repository_url and repository_urls were provided. Using repository_urls.")
+            else:
+                repository_urls = repository_url
+                logger.warning("The repository_url parameter is deprecated. Please use repository_urls instead.")
+
         # Ensure the column exists
         self._ensure_toxicity_column_exists()
+
+        # Set default date range if not provided
+        if end_date is None:
+            end_date = datetime.now().strftime("%Y-%m-%d")
+            
+        if start_date is None and end_date is not None:
+            # Default to 2 months before end_date
+            end_dt = datetime.fromisoformat(end_date.replace('Z', '+00:00')) if 'Z' in end_date else datetime.fromisoformat(end_date)
+            start_dt = end_dt - timedelta(days=60)  # 2 months as 60 days
+            start_date = start_dt.strftime("%Y-%m-%d")
+
+        # Handle repository_urls parameter
+        if repository_urls is not None and not isinstance(repository_urls, list):
+            repository_urls = [repository_urls]  # Convert single URL to list
 
         # Build the base query
         query = """
@@ -65,11 +93,13 @@ class AnalysisWorker:
 
         params = []
 
-        # Add filters if provided
-        if repository_url:
-            query += " AND r.url = ?"
-            params.append(repository_url)
+        # Add repository filter if provided
+        if repository_urls:
+            placeholders = ','.join(['?'] * len(repository_urls))
+            query += f" AND r.url IN ({placeholders})"
+            params.extend(repository_urls)
 
+        # Add date filters
         if start_date:
             query += " AND c.created_at >= ?"
             params.append(start_date)
@@ -91,11 +121,11 @@ class AnalysisWorker:
         comments = self.db.cursor.fetchall()
 
         if not comments:
-            logger.info("No comments found that need toxicity analysis.")
+            logger.info(f"No comments found that need toxicity analysis within the specified criteria.")
             return 0
 
         logger.info(f"Found {len(comments)} comments to analyze for toxicity")
-
+        
         # Process comments in batches
         processed_count = 0
         total_comments = len(comments)
