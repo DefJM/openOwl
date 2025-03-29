@@ -9,6 +9,7 @@ from openowl.db import DB
 from openowl.github_api import GithubAPI
 from openowl.github_worker import GithubWorker
 from openowl.analysis_worker import AnalysisWorker
+from openowl.llm_provider import LLMProvider
 
 load_dotenv()
 
@@ -24,7 +25,11 @@ github_url="https://github.com/formbricks/formbricks"
 package_version = None
 token = os.environ.get("GITHUB_ACCESS_TOKEN")
 db = DB(os.environ.get("PATH_DB"))
-model = "claude-3-5-haiku-20241022"
+
+# Choose the provider and model
+# provider = "claude"  # Use Claude API
+provider = "ollama"  # Use Ollama API
+model = "claude-3-5-haiku-20241022" if provider == "claude" else "gemma3:4b"
 
 worker = GithubWorker(db, github_url, package_version, token)
 
@@ -40,9 +45,9 @@ worker = GithubWorker(db, github_url, package_version, token)
 # worker.process_pull_requests(update=True)
 # worker.process_pull_request_comments(update=True)
 
-# Analyze toxicity of comments
-analysis_worker = AnalysisWorker(worker.db, model)
-analysis_worker.update_toxicity_scores_llm(repository_urls=github_url, start_date="2025-03-01", end_date=None)
+# Initialize the analysis worker with provider
+analysis_worker = AnalysisWorker(worker.db, model, provider=provider)
+analysis_worker.update_toxicity_scores_llm(repository_urls=github_url, start_date="2024-01-01", end_date=None)
 
 
 

@@ -10,9 +10,17 @@ logger = setup_logger(__name__)
 
 
 class AnalysisWorker:
-    def __init__(self, db, model):
+    def __init__(self, db, model, provider=None):
+        """Initialize the analysis worker.
+        
+        Args:
+            db: Database connection.
+            model: LLM model to use.
+            provider (str, optional): LLM provider to use ('claude' or 'ollama').
+        """
         self.db = db
         self.model = model
+        self.provider = provider
 
     def _ensure_toxicity_column_exists(self):
         """
@@ -143,7 +151,7 @@ class AnalysisWorker:
 
                 try:
                     # Get toxicity score from LLM
-                    toxicity_data = get_toxicity_score_llm(body, self.model)
+                    toxicity_data = get_toxicity_score_llm(body, self.model, self.provider)
 
                     # Convert to JSON string for storage
                     toxicity_json = json.dumps(toxicity_data)

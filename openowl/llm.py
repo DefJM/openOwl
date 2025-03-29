@@ -1,9 +1,9 @@
 import os
 import xml.etree.ElementTree as ET
 
-import anthropic
 from dotenv import load_dotenv
 
+from openowl.llm_provider import LLMProvider
 from openowl.llm_prompt_templates import (
     bug_label_dict,
     issue_label_dict,
@@ -13,16 +13,43 @@ from openowl.llm_prompt_templates import (
 load_dotenv()
 
 
-# loosely following anthropic's guide https://docs.anthropic.com/en/docs/about-claude/use-case-guides/ticket-routing#time-to-assignment and https://docs.anthropic.com/en/docs/about-claude/use-case-guides/legal-summarization
+# Config for providers and models
+DEFAULT_PROVIDER = os.getenv("LLM_PROVIDER", "claude")  # claude or ollama
+DEFAULT_MODEL = os.getenv("LLM_MODEL", "claude-3-5-haiku-20241022")  # For Claude
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3")  # Default model for Ollama
 
 
-def get_issue_summarization(issue_new_dict, model):
+def get_llm_provider(provider=None, model=None):
+    """
+    Get the LLM provider based on configuration.
+    
+    Args:
+        provider (str, optional): The provider to use ('claude' or 'ollama')
+        model (str, optional): The model to use
+        
+    Returns:
+        LLMProvider: An instance of the requested LLM provider
+    """
+    provider = provider or DEFAULT_PROVIDER
+    
+    if provider.lower() == 'claude':
+        model = model or DEFAULT_MODEL
+    elif provider.lower() == 'ollama':
+        model = model or OLLAMA_MODEL
+    else:
+        raise ValueError(f"Unsupported provider: {provider}")
+    
+    return LLMProvider.create(provider, model)
+
+
+def get_issue_summarization(issue_new_dict, model=None, provider=None):
     """
     Summarize a GitHub issue and its comments using LLM.
 
     Args:
         issue_new_dict (dict): The issue data to be summarized.
-        default_model (str): The model to use for summarization.
+        model (str, optional): The model to use for summarization.
+        provider (str, optional): The provider to use ('claude' or 'ollama')
 
     Returns:
         dict: A dictionary containing the summarization results.
@@ -53,29 +80,28 @@ def get_issue_summarization(issue_new_dict, model):
         <bug_label_reasoning> your reasoning for the provided bug_label </bug_label_reasoning>
         """
 
-    # Set the default model
-    client = anthropic.Anthropic(
-        # defaults to os.environ.get("ANTHROPIC_API_KEY")
-        api_key=os.getenv("CLAUDE_API_KEY"),
-    )
-    message = client.messages.create(
-        model=model,
+    # Get the LLM provider
+    llm = get_llm_provider(provider, model)
+    
+    # Generate the response
+    response_text = llm.generate_text(
+        prompt=issue_summarization_prompt,
         max_tokens=700,
         temperature=0,
-        messages=[{"role": "user", "content": issue_summarization_prompt}],
-        stream=False,
     )
-    issue_summarization_dict = xml_to_json(message.content[0].text)
+    
+    issue_summarization_dict = xml_to_json(response_text)
     return issue_summarization_dict
 
 
-def get_toxicity_score_llm(comment, model):
+def get_toxicity_score_llm(comment, model=None, provider=None):
     """
     Analyze the toxicity of a GitHub comment using LLM.
 
     Args:
         comment (str): The comment text to analyze for toxicity.
-        default_model (str): The LLM model to use for toxicity analysis.
+        model (str, optional): The model to use for toxicity analysis.
+        provider (str, optional): The provider to use ('claude' or 'ollama')
 
     Returns:
         dict: A dictionary containing toxicity score and the rationale for the score.
@@ -100,19 +126,17 @@ def get_toxicity_score_llm(comment, model):
         Please carefully analyze the above comment and provide your short and concise TLDR rationale in XML format as described.
         """
 
-    # Set the default model
-    client = anthropic.Anthropic(
-        # defaults to os.environ.get("ANTHROPIC_API_KEY")
-        api_key=os.getenv("CLAUDE_API_KEY"),
-    )
-    message = client.messages.create(
-        model=model,
+    # Get the LLM provider
+    llm = get_llm_provider(provider, model)
+    
+    # Generate the response
+    response_text = llm.generate_text(
+        prompt=toxicity_prompt,
         max_tokens=700,
         temperature=0,
-        messages=[{"role": "user", "content": toxicity_prompt}],
-        stream=False,
     )
-    toxicity_dict = xml_to_json(message.content[0].text)
+    
+    toxicity_dict = xml_to_json(response_text)
     print(toxicity_dict)
     return toxicity_dict
 
