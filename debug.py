@@ -51,7 +51,7 @@ worker = GithubWorker(db, github_url, package_version, token)
 
 # Initialize the analysis worker with provider
 analysis_worker = AnalysisWorker(worker.db, model, provider=provider)
-analysis_worker.update_toxicity_scores_llm(repository_urls=github_url, start_date="2024-01-01", end_date=None)
+analysis_worker.update_toxicity_scores_llm(repository_urls=github_url, start_date="2024-01-01", end_date=None, force_update=True)
 
 
 
@@ -168,3 +168,58 @@ def show_comments_for_issue(issue_id):
 # show_table_contents("comments")
 
 # show_existing_tables()
+
+def display_toxic_comments(repository_url, min_score=4, limit=10):
+    """
+    Display the most toxic comments for a repository with their URLs.
+    
+    Args:
+        repository_url (str): URL of the repository to analyze
+        min_score (int, optional): Minimum toxicity score (1-5). Default is 4.
+        limit (int, optional): Maximum number of comments to display. Default is 10.
+    """
+    conn = sqlite3.connect(os.environ.get("PATH_DB"))
+    cursor = conn.cursor()
+    
+    query = """
+        SELECT c.id, c.html_url, c.body, c.metric_toxicity_llm, u.username
+        FROM comments c
+        JOIN repositories r ON c.repository_id = r.id
+        JOIN users u ON c.user_id = u.id
+        WHERE r.url = ? AND c.metric_toxicity_llm IS NOT NULL
+        ORDER BY c.created_at DESC
+        LIMIT ?
+    """
+    
+    cursor.execute(query, (repository_url, limit))
+    comments = cursor.fetchall()
+    
+    print(f"\n------ Potentially Toxic Comments for {repository_url} ------\n")
+    
+    for comment_id, html_url, body, toxicity_json, username in comments:
+        try:
+            toxicity_data = json.loads(toxicity_json)
+            
+            # Handle both old and new structure
+            if 'evaluations' in toxicity_data:
+                latest_key = toxicity_data.get('latest_evaluation')
+                evaluation = toxicity_data['evaluations'].get(latest_key)
+                score = int(evaluation.get('toxicity_score', 0))
+                rationale = evaluation.get('toxicity_rationale', '')
+            else:
+                score = int(toxicity_data.get('toxicity_score', 0))
+                rationale = toxicity_data.get('toxicity_rationale', '')
+            
+            if score >= min_score:
+                print(f"ID: {comment_id} | Score: {score}/5 | User: {username}")
+                print(f"URL: {html_url}")
+                print(f"Rationale: {rationale}")
+                print(f"Comment preview: {body[:100]}..." if len(body) > 100 else body)
+                print("-" * 80)
+        except (json.JSONDecodeError, ValueError, TypeError):
+            continue
+    
+    conn.close()
+
+# Add this after your analysis workflow
+# display_toxic_comments(github_url)

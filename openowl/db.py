@@ -2,6 +2,7 @@ import sqlite3
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
+import json
 
 from openowl.logger_config import setup_logger
 
@@ -938,45 +939,102 @@ class DB:
         )
         return results
 
-    def query_toxic_comments(self, repository_url=None, min_score=4, limit=100):
+    def query_toxic_comments(self, repository_url=None, min_score=4, limit=100, model=None, provider=None, prompt_version=None):
         """Query comments with high toxicity scores.
         
         Args:
             repository_url (str, optional): Repository URL to filter comments by.
             min_score (int, optional): Minimum toxicity score threshold (1-5). Default is 4.
             limit (int, optional): Maximum number of comments to return. Default is 100.
+            model (str, optional): Filter by specific model.
+            provider (str, optional): Filter by specific provider.
+            prompt_version (str, optional): Filter by specific prompt version.
             
         Returns:
             list: List of dictionaries containing comment data with high toxicity scores
         """
+        # Base query
         query = """
             SELECT c.*, r.url as repository_url, u.username as author_username,
-                   json_extract(c.metric_toxicity_llm, '$.toxicity_score') as toxicity_score,
-                   json_extract(c.metric_toxicity_llm, '$.toxicity_rationale') as toxicity_rationale,
-                   json_extract(c.metric_toxicity_llm, '$.model_info.model_name') as model_name,
-                   json_extract(c.metric_toxicity_llm, '$.model_info.provider') as provider,
-                   json_extract(c.metric_toxicity_llm, '$.eval_metadata.timestamp') as eval_timestamp,
-                   json_extract(c.metric_toxicity_llm, '$.eval_metadata.prompt_version') as prompt_version
+                   c.metric_toxicity_llm as raw_toxicity_data
             FROM comments c
             JOIN repositories r ON c.repository_id = r.id
             JOIN users u ON c.user_id = u.id
             WHERE c.metric_toxicity_llm IS NOT NULL
-              AND CAST(json_extract(c.metric_toxicity_llm, '$.toxicity_score') AS INTEGER) >= ?
         """
         
-        params = [min_score]
+        params = []
         
         if repository_url:
             query += " AND r.url = ?"
             params.append(repository_url)
             
-        query += " ORDER BY toxicity_score DESC, c.created_at DESC LIMIT ?"
+        query += " ORDER BY c.created_at DESC LIMIT ?"
         params.append(limit)
         
         self.cursor.execute(query, params)
         
         columns = [desc[0] for desc in self.cursor.description]
-        results = [dict(zip(columns, row)) for row in self.cursor.fetchall()]
+        results = []
+        
+        for row in self.cursor.fetchall():
+            row_dict = dict(zip(columns, row))
+            
+            # Process the toxicity data
+            try:
+                toxicity_json = json.loads(row_dict['raw_toxicity_data'])
+                
+                # Handle both old and new structure
+                if 'evaluations' in toxicity_json:
+                    # New structure
+                    evaluations = toxicity_json['evaluations']
+                    latest_key = toxicity_json.get('latest_evaluation')
+                    
+                    # Filter by model/provider/prompt if specified
+                    filtered_evals = {}
+                    
+                    for key, eval_data in evaluations.items():
+                        eval_model = eval_data.get('model_info', {}).get('model_name')
+                        eval_provider = eval_data.get('model_info', {}).get('provider')
+                        eval_prompt = eval_data.get('eval_metadata', {}).get('prompt_version')
+                        
+                        if (model is None or eval_model == model) and \
+                           (provider is None or eval_provider == provider) and \
+                           (prompt_version is None or eval_prompt == prompt_version):
+                            # Convert toxicity score to int for comparison
+                            score = int(eval_data.get('toxicity_score', 0))
+                            if score >= min_score:
+                                filtered_evals[key] = eval_data
+                    
+                    if filtered_evals:
+                        row_dict['toxicity_evaluations'] = filtered_evals
+                        row_dict['evaluation_count'] = len(filtered_evals)
+                        
+                        # Use latest evaluation or first filtered one
+                        if latest_key in filtered_evals:
+                            eval_to_use = filtered_evals[latest_key]
+                        else:
+                            eval_to_use = next(iter(filtered_evals.values()))
+                        
+                        row_dict['toxicity_score'] = eval_to_use.get('toxicity_score')
+                        row_dict['toxicity_rationale'] = eval_to_use.get('toxicity_rationale')
+                        results.append(row_dict)
+                else:
+                    # Old structure - direct access
+                    score = int(toxicity_json.get('toxicity_score', 0))
+                    
+                    if score >= min_score:
+                        if (model is None or toxicity_json.get('model_info', {}).get('model_name') == model) and \
+                           (provider is None or toxicity_json.get('model_info', {}).get('provider') == provider) and \
+                           (prompt_version is None or toxicity_json.get('eval_metadata', {}).get('prompt_version') == prompt_version):
+                            row_dict['toxicity_score'] = toxicity_json.get('toxicity_score')
+                            row_dict['toxicity_rationale'] = toxicity_json.get('toxicity_rationale')
+                            row_dict['evaluation_count'] = 1
+                            results.append(row_dict)
+                
+            except (json.JSONDecodeError, ValueError):
+                # Skip invalid JSON
+                continue
         
         return results
 

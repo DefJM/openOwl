@@ -176,7 +176,7 @@ def get_toxicity_score_llm(comment, model=None, provider=None):
             'toxicity_rationale': f"Error parsing LLM response: {str(e)}",
             '_parsing_error': True
         }
-    print(toxicity_dict)
+    print(f"Toxicity score: {toxicity_dict['toxicity_score']} - {toxicity_dict['toxicity_rationale']}")
     return toxicity_dict
 
 

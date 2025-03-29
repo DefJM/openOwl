@@ -41,38 +41,36 @@ class AnalysisWorker:
             logger.debug(f"Note: {str(e)}")
             pass
 
-    def _enrich_toxicity_data(self, toxicity_data):
-        """Enrich toxicity data with metadata fields.
+    def _enrich_toxicity_data(self, toxicity_data, existing_toxicity_json=None):
+        """Enrich toxicity data with metadata fields and store in multi-evaluation structure.
         
         Args:
             toxicity_data (dict): Original toxicity data from LLM.
+            existing_toxicity_json (str, optional): Existing JSON toxicity data to merge with.
             
         Returns:
-            dict: Enriched toxicity data with metadata.
+            dict: Enriched toxicity data with metadata in multi-evaluation structure.
         """
         # Get current timestamp in ISO format
         current_time = datetime.now().isoformat()
         
-        # Define generation parameters (default values)
+        # Define generation parameters
         gen_params = {
             "temperature": 0,
             "max_tokens": 700
         }
         
-        # Create enriched data structure
-        enriched_data = {
-            # Preserve original toxicity data
+        # Create single evaluation structure
+        evaluation = {
             "toxicity_score": toxicity_data.get("toxicity_score"),
             "toxicity_rationale": toxicity_data.get("toxicity_rationale"),
             
-            # Add model information
             "model_info": {
                 "model_name": self.model,
                 "provider": self.provider,
                 "generation_parameters": gen_params
             },
             
-            # Add evaluation metadata
             "eval_metadata": {
                 "timestamp": current_time,
                 "prompt_version": self.prompt_version,
@@ -80,7 +78,66 @@ class AnalysisWorker:
             }
         }
         
-        return enriched_data
+        # Generate config key for this evaluation
+        config_key = self._generate_config_key()
+        
+        # Check if we have existing data to merge with
+        if existing_toxicity_json:
+            try:
+                existing_data = json.loads(existing_toxicity_json)
+                
+                # If the existing data uses the old structure, convert it
+                if 'evaluations' not in existing_data:
+                    old_model = existing_data.get('model_info', {}).get('model_name')
+                    old_provider = existing_data.get('model_info', {}).get('provider')
+                    old_prompt = existing_data.get('eval_metadata', {}).get('prompt_version')
+                    old_key = self._generate_config_key(old_model, old_provider, old_prompt)
+                    
+                    # Create new structure with the old evaluation
+                    result = {
+                        "evaluations": {
+                            old_key: existing_data
+                        },
+                        "latest_evaluation": old_key
+                    }
+                else:
+                    # Use existing multi-evaluation structure
+                    result = existing_data
+                    
+                # Add new evaluation
+                result["evaluations"][config_key] = evaluation
+                result["latest_evaluation"] = config_key
+                
+                return result
+                
+            except (json.JSONDecodeError, KeyError, TypeError):
+                # If there's an error with existing data, just create new
+                pass
+        
+        # Create new multi-evaluation structure
+        return {
+            "evaluations": {
+                config_key: evaluation
+            },
+            "latest_evaluation": config_key
+        }
+
+    def _generate_config_key(self, model=None, provider=None, prompt_version=None):
+        """Generate a unique key for a specific configuration.
+        
+        Args:
+            model (str, optional): Model name. Defaults to self.model.
+            provider (str, optional): Provider name. Defaults to self.provider.
+            prompt_version (str, optional): Prompt version. Defaults to self.prompt_version.
+            
+        Returns:
+            str: A unique key identifying this configuration
+        """
+        model = model or self.model
+        provider = provider or self.provider
+        prompt_version = prompt_version or self.prompt_version
+        
+        return f"{model}_{provider}_v{prompt_version}"
 
     def _evaluation_settings_match(self, existing_toxicity_json, current_settings=None):
         """Check if existing evaluation has identical settings to current settings.
@@ -100,27 +157,27 @@ class AnalysisWorker:
             # Parse existing JSON
             existing_data = json.loads(existing_toxicity_json)
             
-            # Get model info from existing data
-            existing_model = existing_data.get('model_info', {}).get('model_name')
-            existing_provider = existing_data.get('model_info', {}).get('provider')
-            existing_prompt_version = existing_data.get('eval_metadata', {}).get('prompt_version')
-            
             # Get current settings
-            if current_settings is None:
-                current_model = self.model
-                current_provider = self.provider
-                current_prompt_version = self.prompt_version
-            else:
-                current_model = current_settings.get('model')
-                current_provider = current_settings.get('provider')
-                current_prompt_version = current_settings.get('prompt_version')
+            current_model = current_settings.get('model') if current_settings else self.model
+            current_provider = current_settings.get('provider') if current_settings else self.provider
+            current_prompt_version = current_settings.get('prompt_version') if current_settings else self.prompt_version
             
-            # Compare settings
-            return (
-                existing_model == current_model and
-                existing_provider == current_provider and
-                existing_prompt_version == current_prompt_version
-            )
+            # Check if we're using the new multi-evaluation structure or old single-evaluation structure
+            if 'evaluations' in existing_data:
+                # New structure - check if this configuration exists
+                config_key = self._generate_config_key(current_model, current_provider, current_prompt_version)
+                return config_key in existing_data['evaluations']
+            else:
+                # Old structure - check settings directly
+                existing_model = existing_data.get('model_info', {}).get('model_name')
+                existing_provider = existing_data.get('model_info', {}).get('provider')
+                existing_prompt_version = existing_data.get('eval_metadata', {}).get('prompt_version')
+                
+                return (
+                    existing_model == current_model and
+                    existing_provider == current_provider and
+                    existing_prompt_version == current_prompt_version
+                )
         except (json.JSONDecodeError, KeyError, TypeError):
             # If there's any error parsing or accessing the JSON, assume no match
             return False
@@ -131,7 +188,7 @@ class AnalysisWorker:
         start_date=None,
         end_date=None,
         limit=None,
-        batch_size=100,
+        batch_size=10,
         repository_url=None,
         force_update=False,  # Add parameter to force update regardless of settings
     ):
@@ -182,7 +239,7 @@ class AnalysisWorker:
         if force_update:
             # If force_update is True, include all comments regardless of existing evaluation
             query = """
-                SELECT c.id, c.body, c.created_at, c.issue_id, r.url as repository_url, c.metric_toxicity_llm
+                SELECT c.id, c.body, c.created_at, c.issue_id, r.url as repository_url, c.html_url, c.metric_toxicity_llm
                 FROM comments c
                 JOIN repositories r ON c.repository_id = r.id
                 WHERE 1=1
@@ -190,7 +247,7 @@ class AnalysisWorker:
         else:
             # Otherwise, include only comments with no evaluation or that need to be updated
             query = """
-                SELECT c.id, c.body, c.created_at, c.issue_id, r.url as repository_url, c.metric_toxicity_llm
+                SELECT c.id, c.body, c.created_at, c.issue_id, r.url as repository_url, c.html_url, c.metric_toxicity_llm
                 FROM comments c
                 JOIN repositories r ON c.repository_id = r.id
                 WHERE c.metric_toxicity_llm IS NULL
@@ -232,13 +289,13 @@ class AnalysisWorker:
         # Filter out comments that already have matching evaluations
         comments_to_process = []
         for comment in all_comments:
-            comment_id, body, created_at, issue_id, repo_url, existing_toxicity_json = comment
+            comment_id, body, created_at, issue_id, repo_url, html_url, existing_toxicity_json = comment
             
             # Skip if already evaluated with the same settings and not forcing update
             if not force_update and existing_toxicity_json and self._evaluation_settings_match(existing_toxicity_json):
                 continue
             
-            comments_to_process.append((comment_id, body, created_at, issue_id, repo_url))
+            comments_to_process.append((comment_id, body, created_at, issue_id, repo_url, html_url))
         
         if not comments_to_process:
             logger.info(f"All {len(all_comments)} comments already have up-to-date toxicity evaluations with current settings.")
@@ -252,24 +309,32 @@ class AnalysisWorker:
 
         with tqdm(total=total_comments, desc="Analyzing comment toxicity") as pbar:
             for i, comment in enumerate(comments_to_process):
-                comment_id, body, created_at, issue_id, repo_url = comment
+                comment_id, body, created_at, issue_id, repo_url, html_url = comment
 
                 if not body:
                     logger.warning(
-                        f"Empty comment body for comment ID {comment_id}, skipping"
+                        f"Empty comment body for comment ID {comment_id}, URL: {html_url}, skipping"
                     )
                     pbar.update(1)
                     continue
 
                 try:
-                    # Get basic toxicity score from LLM
+                    # Get basic toxicity data
                     basic_toxicity_data = get_toxicity_score_llm(body, self.model, self.provider)
                     
-                    # Enrich with metadata
-                    enriched_toxicity_data = self._enrich_toxicity_data(basic_toxicity_data)
-
-                    # Convert to JSON string for storage
+                    # Enrich with metadata, merging with existing data if present
+                    enriched_toxicity_data = self._enrich_toxicity_data(
+                        basic_toxicity_data, 
+                        existing_toxicity_json
+                    )
+                    
+                    # Convert to JSON for storage
                     toxicity_json = json.dumps(enriched_toxicity_data)
+
+                    # Log the toxicity result with comment URL
+                    logger.info(
+                        f"Comment {comment_id} | Score: {basic_toxicity_data.get('toxicity_score')} | URL: {html_url}"
+                    )
 
                     # Update the database
                     self.db.cursor.execute(
