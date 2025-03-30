@@ -20,7 +20,7 @@ load_dotenv()
 # github_url="https://github.com/pydantic/pydantic"
 # github_url="https://github.com/pandas-dev/pandas"
 # github_url = "https://github.com/psf/requests"
-github_url="https://github.com/formbricks/formbricks"
+github_url = "https://github.com/formbricks/formbricks"
 
 package_version = None
 token = os.environ.get("GITHUB_ACCESS_TOKEN")
@@ -28,11 +28,11 @@ db = DB(os.environ.get("PATH_DB"))
 
 # Choose the provider and model
 # provider = "claude"  # Use Claude API
-# model = "claude-3-5-haiku-20241022" 
+# model = "claude-3-5-haiku-20241022"
 
 provider = "ollama"
-# model = "gemma3:12b"
-model = "gemma3:4b"
+model = "gemma3:12b"
+# model = "gemma3:4b"
 # model = "gemma3:1b"
 
 worker = GithubWorker(db, github_url, package_version, token)
@@ -51,11 +51,13 @@ worker = GithubWorker(db, github_url, package_version, token)
 
 # Initialize the analysis worker with provider
 analysis_worker = AnalysisWorker(worker.db, model, provider=provider)
-analysis_worker.update_toxicity_scores_llm(repository_urls=github_url, start_date="2024-01-01", end_date=None, force_update=True)
-
-
-
-
+analysis_worker.update_toxicity_scores_llm(
+    repository_urls=github_url,
+    start_date="2024-01-01",
+    end_date=None,
+    force_update=True,
+    filter_bots=False,
+)
 
 
 ################ couple of queries to the database ################
@@ -169,10 +171,11 @@ def show_comments_for_issue(issue_id):
 
 # show_existing_tables()
 
+
 def display_toxic_comments(repository_url, min_score=4, limit=10):
     """
     Display the most toxic comments for a repository with their URLs.
-    
+
     Args:
         repository_url (str): URL of the repository to analyze
         min_score (int, optional): Minimum toxicity score (1-5). Default is 4.
@@ -180,7 +183,7 @@ def display_toxic_comments(repository_url, min_score=4, limit=10):
     """
     conn = sqlite3.connect(os.environ.get("PATH_DB"))
     cursor = conn.cursor()
-    
+
     query = """
         SELECT c.id, c.html_url, c.body, c.metric_toxicity_llm, u.username
         FROM comments c
@@ -190,26 +193,26 @@ def display_toxic_comments(repository_url, min_score=4, limit=10):
         ORDER BY c.created_at DESC
         LIMIT ?
     """
-    
+
     cursor.execute(query, (repository_url, limit))
     comments = cursor.fetchall()
-    
+
     print(f"\n------ Potentially Toxic Comments for {repository_url} ------\n")
-    
+
     for comment_id, html_url, body, toxicity_json, username in comments:
         try:
             toxicity_data = json.loads(toxicity_json)
-            
+
             # Handle both old and new structure
-            if 'evaluations' in toxicity_data:
-                latest_key = toxicity_data.get('latest_evaluation')
-                evaluation = toxicity_data['evaluations'].get(latest_key)
-                score = int(evaluation.get('toxicity_score', 0))
-                rationale = evaluation.get('toxicity_rationale', '')
+            if "evaluations" in toxicity_data:
+                latest_key = toxicity_data.get("latest_evaluation")
+                evaluation = toxicity_data["evaluations"].get(latest_key)
+                score = int(evaluation.get("toxicity_score", 0))
+                rationale = evaluation.get("toxicity_rationale", "")
             else:
-                score = int(toxicity_data.get('toxicity_score', 0))
-                rationale = toxicity_data.get('toxicity_rationale', '')
-            
+                score = int(toxicity_data.get("toxicity_score", 0))
+                rationale = toxicity_data.get("toxicity_rationale", "")
+
             if score >= min_score:
                 print(f"ID: {comment_id} | Score: {score}/5 | User: {username}")
                 print(f"URL: {html_url}")
@@ -218,8 +221,9 @@ def display_toxic_comments(repository_url, min_score=4, limit=10):
                 print("-" * 80)
         except (json.JSONDecodeError, ValueError, TypeError):
             continue
-    
+
     conn.close()
+
 
 # Add this after your analysis workflow
 # display_toxic_comments(github_url)

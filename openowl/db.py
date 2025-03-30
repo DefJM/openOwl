@@ -939,7 +939,7 @@ class DB:
         )
         return results
 
-    def query_toxic_comments(self, repository_url=None, min_score=4, limit=100, model=None, provider=None, prompt_version=None):
+    def query_toxic_comments(self, repository_url=None, min_score=4, limit=100, model=None, provider=None, prompt_version=None, include_bots=False):
         """Query comments with high toxicity scores.
         
         Args:
@@ -949,6 +949,7 @@ class DB:
             model (str, optional): Filter by specific model.
             provider (str, optional): Filter by specific provider.
             prompt_version (str, optional): Filter by specific prompt version.
+            include_bots (bool, optional): Whether to include bot comments. Default is False.
             
         Returns:
             list: List of dictionaries containing comment data with high toxicity scores
@@ -956,7 +957,8 @@ class DB:
         # Base query
         query = """
             SELECT c.*, r.url as repository_url, u.username as author_username,
-                   c.metric_toxicity_llm as raw_toxicity_data
+                   c.metric_toxicity_llm as raw_toxicity_data,
+                   u.type as user_type
             FROM comments c
             JOIN repositories r ON c.repository_id = r.id
             JOIN users u ON c.user_id = u.id
@@ -969,6 +971,11 @@ class DB:
             query += " AND r.url = ?"
             params.append(repository_url)
             
+        # Filter out bot comments if include_bots is False
+        if not include_bots:
+            # Filter out users with type 'Bot' and usernames ending with '[bot]'
+            query += " AND (u.type != 'Bot' AND u.username NOT LIKE '%[bot]')"
+        
         query += " ORDER BY c.created_at DESC LIMIT ?"
         params.append(limit)
         
@@ -1088,3 +1095,29 @@ class DB:
         except Exception as e:
             logger.error(f"Failed to update latest_update_issues timestamp: {e}")
             return False
+
+    def is_bot_user(self, user_id):
+        """Check if a user is a bot based on type and username pattern.
+        
+        Args:
+            user_id (int): User ID to check
+            
+        Returns:
+            bool: True if the user is a bot, False otherwise
+        """
+        query = """
+            SELECT type, username
+            FROM users
+            WHERE id = ?
+        """
+        
+        self.cursor.execute(query, (user_id,))
+        result = self.cursor.fetchone()
+        
+        if not result:
+            return False
+        
+        user_type, username = result
+        
+        # Check if user type is 'Bot' or username ends with '[bot]'
+        return user_type == 'Bot' or username.endswith('[bot]')

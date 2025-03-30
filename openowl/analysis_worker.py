@@ -190,7 +190,8 @@ class AnalysisWorker:
         limit=None,
         batch_size=10,
         repository_url=None,
-        force_update=False,  # Add parameter to force update regardless of settings
+        force_update=False,
+        filter_bots=True,
     ):
         """
         Update the comments table with toxicity scores for GitHub comments using an LLM model.
@@ -206,6 +207,7 @@ class AnalysisWorker:
             batch_size (int, optional): Number of comments to process in each batch for efficient processing.
             repository_url (str, optional): Deprecated. URL of a repository to analyze. Use repository_urls instead.
             force_update (bool, optional): If True, updates all comments regardless of existing evaluation.
+            filter_bots (bool, optional): If True, excludes comments from bot users. Defaults to True.
 
         Returns:
             int: The number of comments processed and updated
@@ -239,17 +241,21 @@ class AnalysisWorker:
         if force_update:
             # If force_update is True, include all comments regardless of existing evaluation
             query = """
-                SELECT c.id, c.body, c.created_at, c.issue_id, r.url as repository_url, c.html_url, c.metric_toxicity_llm
+                SELECT c.id, c.body, c.created_at, c.issue_id, r.url as repository_url, c.html_url, c.metric_toxicity_llm,
+                       u.username as author_username, u.type as user_type
                 FROM comments c
                 JOIN repositories r ON c.repository_id = r.id
+                JOIN users u ON c.user_id = u.id
                 WHERE 1=1
             """
         else:
             # Otherwise, include only comments with no evaluation or that need to be updated
             query = """
-                SELECT c.id, c.body, c.created_at, c.issue_id, r.url as repository_url, c.html_url, c.metric_toxicity_llm
+                SELECT c.id, c.body, c.created_at, c.issue_id, r.url as repository_url, c.html_url, c.metric_toxicity_llm,
+                       u.username as author_username, u.type as user_type
                 FROM comments c
                 JOIN repositories r ON c.repository_id = r.id
+                JOIN users u ON c.user_id = u.id
                 WHERE c.metric_toxicity_llm IS NULL
             """
 
@@ -269,6 +275,10 @@ class AnalysisWorker:
         if end_date:
             query += " AND c.created_at <= ?"
             params.append(end_date)
+        
+        # Add bot filtering if requested
+        if filter_bots:
+            query += " AND (u.type != 'Bot' AND u.username NOT LIKE '%[bot]')"
 
         # Order by newest first
         query += " ORDER BY c.created_at DESC"
@@ -289,13 +299,13 @@ class AnalysisWorker:
         # Filter out comments that already have matching evaluations
         comments_to_process = []
         for comment in all_comments:
-            comment_id, body, created_at, issue_id, repo_url, html_url, existing_toxicity_json = comment
+            comment_id, body, created_at, issue_id, repo_url, html_url, existing_toxicity_json, author_username, user_type = comment
             
             # Skip if already evaluated with the same settings and not forcing update
             if not force_update and existing_toxicity_json and self._evaluation_settings_match(existing_toxicity_json):
                 continue
             
-            comments_to_process.append((comment_id, body, created_at, issue_id, repo_url, html_url))
+            comments_to_process.append((comment_id, body, created_at, issue_id, repo_url, html_url, author_username, user_type))
         
         if not comments_to_process:
             logger.info(f"All {len(all_comments)} comments already have up-to-date toxicity evaluations with current settings.")
@@ -309,7 +319,7 @@ class AnalysisWorker:
 
         with tqdm(total=total_comments, desc="Analyzing comment toxicity") as pbar:
             for i, comment in enumerate(comments_to_process):
-                comment_id, body, created_at, issue_id, repo_url, html_url = comment
+                comment_id, body, created_at, issue_id, repo_url, html_url, author_username, user_type = comment
 
                 if not body:
                     logger.warning(
@@ -331,9 +341,9 @@ class AnalysisWorker:
                     # Convert to JSON for storage
                     toxicity_json = json.dumps(enriched_toxicity_data)
 
-                    # Log the toxicity result with comment URL
+                    # Log the toxicity result with comment URL and author info
                     logger.info(
-                        f"Comment {comment_id} | Score: {basic_toxicity_data.get('toxicity_score')} | URL: {html_url}"
+                        f"Comment {comment_id} | Author: {author_username} | Score: {basic_toxicity_data.get('toxicity_score')} | URL: {html_url}"
                     )
 
                     # Update the database
@@ -365,7 +375,7 @@ class AnalysisWorker:
 
         return processed_count
 
-    def check_comments_need_evaluation(self, repository_urls=None, start_date=None, end_date=None):
+    def check_comments_need_evaluation(self, repository_urls=None, start_date=None, end_date=None, filter_bots=True):
         """
         Check how many comments need evaluation with current settings.
         
@@ -373,6 +383,7 @@ class AnalysisWorker:
             repository_urls (list or str, optional): URL(s) of repositories to check.
             start_date (str, optional): ISO format date to filter comments created after this date.
             end_date (str, optional): ISO format date to filter comments created before this date.
+            filter_bots (bool, optional): If True, excludes comments from bot users. Defaults to True.
             
         Returns:
             dict: Dictionary with counts of comments needing evaluation and total comments
@@ -386,6 +397,7 @@ class AnalysisWorker:
             SELECT c.id, c.metric_toxicity_llm
             FROM comments c
             JOIN repositories r ON c.repository_id = r.id
+            JOIN users u ON c.user_id = u.id
             WHERE 1=1
         """
         
@@ -405,6 +417,10 @@ class AnalysisWorker:
         if end_date:
             query += " AND c.created_at <= ?"
             params.append(end_date)
+        
+        # Add bot filtering if requested
+        if filter_bots:
+            query += " AND (u.type != 'Bot' AND u.username NOT LIKE '%[bot]')"
         
         # Execute query
         self.db.cursor.execute(query, params)
@@ -426,5 +442,6 @@ class AnalysisWorker:
                 "model": self.model,
                 "provider": self.provider,
                 "prompt_version": self.prompt_version
-            }
+            },
+            "filter_bots": filter_bots
         }
