@@ -51,14 +51,21 @@ worker = GithubWorker(db, github_url, package_version, token)
 
 # Initialize the analysis worker with provider
 analysis_worker = AnalysisWorker(worker.db, model, provider=provider)
-analysis_worker.update_toxicity_scores_llm(
+# analysis_worker.update_toxicity_scores_llm(
+#     repository_urls=github_url,
+#     start_date="2024-01-01",
+#     end_date=None,
+#     force_update=True,
+#     filter_bots=False,
+# )
+
+analysis_worker.update_toxicity_scores_detoxify(
     repository_urls=github_url,
     start_date="2024-01-01",
     end_date=None,
     force_update=True,
     filter_bots=False,
 )
-
 
 ################ couple of queries to the database ################
 

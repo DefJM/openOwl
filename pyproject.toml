@@ -12,6 +12,7 @@ streamlit = "^1.38.0"
 python-dotenv = "^1.0.1"
 tqdm = "^4.67.1"
 anthropic = "^0.49.0"
+detoxify = "^0.5.2"
 
 [tool.poetry.group.dev.dependencies]
 jupyter = "^1.0.0"
