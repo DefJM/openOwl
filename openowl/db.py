@@ -13,24 +13,15 @@ class DB:
     """Class to initialize and interact with SQLite DB"""
 
     def __init__(self, path: str):
-        """Initialize SQLite database with core tables.
-
-        This class provides an interface to interact with a SQLite database,
-        creating core tables for storing repository, user, issue and
-        comment data if they don't already exist.
-
-        Created tables:
-            - repositories: Stores repository metadata
-            - users: Stores user information
-            - issues: Stores issue tracking data
-            - comments: Stores issue comments
+        """Initializes SQLite database with core tables. Creates and manages SQLite database 
+        with tables for repositories, users, issues and comments.
 
         Args:
-            path (str): Path to SQLite database file location.
+            path (str): Path to SQLite database file.
 
         Attributes:
-            conn: SQLite database connection object
-            cursor: SQLite cursor object for executing queries
+            conn: SQLite connection object
+            cursor: SQLite cursor object
         """
         # Create the db directory if it doesn't exist
         if not Path(path).parent.exists():
@@ -48,6 +39,7 @@ class DB:
             repositories: Repository metadata and timestamps
             users: GitHub user profiles and information
             issues: Issue tracking data and metadata
+            comments: Issue and PR comments with metadata
             pull_requests: Pull request data and metadata
         """
         # Repositories table
